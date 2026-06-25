@@ -68,8 +68,8 @@ export function setupSolitaire(container: HTMLElement): void {
   // Calculate responsive scale based on container width
   function getResponsiveScale(): number {
     const containerWidth = container.clientWidth - 16 // subtract padding margin
-    const minimumNeededWidth = GAP_TOP + (11 * CARD_W) + (10 * GAP_X) + GAP_TOP
-    return Math.min(1, Math.max(0.5, containerWidth / minimumNeededWidth))
+    const minimumNeededWidth = GAP_TOP + (7 * CARD_W) + (6 * GAP_X) + GAP_TOP
+    return Math.max(0.5, containerWidth / minimumNeededWidth)
   }
 
   let scale = getResponsiveScale()
@@ -92,9 +92,10 @@ export function setupSolitaire(container: HTMLElement): void {
     scaledFacedownShift = FACEDOWN_SHIFT * scale
     scaledFaceupShift = FACEUP_SHIFT * scale
 
-    const boardWidth = scaledGapTop + (11 * scaledCardW) + (10 * scaledGapX) + scaledGapTop
+    const containerWidth = container.clientWidth - 16
+    const boardWidth = scaledGapTop + (7 * scaledCardW) + (6 * scaledGapX) + scaledGapTop
     const boardHeight = scaledTableauY + (scaledCardH * 2) + 20
-    canvas.width = Math.ceil(boardWidth)
+    canvas.width = Math.ceil(Math.max(boardWidth, containerWidth))
     canvas.height = Math.ceil(boardHeight)
   }
 
