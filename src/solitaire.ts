@@ -65,6 +65,17 @@ export function setupSolitaire(container: HTMLElement): void {
   const restartButton = restartButtonElement
   const ctx = context
 
+  let stock: Card[] = []
+  let waste: Card[] = []
+  let foundations: Record<Suit, Card[]> = {
+    hearts: [],
+    diamonds: [],
+    clubs: [],
+    spades: [],
+  }
+  let tableau: Card[][] = [[], [], [], [], [], [], []]
+  let drag: DragState | null = null
+
   // Calculate responsive scale based on container width
   function getResponsiveScale(): number {
     const containerWidth = container.clientWidth - 16 // subtract padding margin
@@ -94,7 +105,12 @@ export function setupSolitaire(container: HTMLElement): void {
 
     const containerWidth = container.clientWidth - 16
     const boardWidth = scaledGapTop + (7 * scaledCardW) + (6 * scaledGapX) + scaledGapTop
-    const boardHeight = scaledTableauY + (scaledCardH * 2) + 20
+    const tallestTableauHeight = tableau.reduce((tallest, column) => {
+      const positions = tableauCardPositions(column)
+      const columnHeight = positions.length === 0 ? 0 : positions[positions.length - 1] + scaledCardH
+      return Math.max(tallest, columnHeight)
+    }, scaledTableauY + scaledCardH)
+    const boardHeight = Math.max(scaledTableauY + (scaledCardH * 2) + 20, tallestTableauHeight + scaledGapTop)
     canvas.width = Math.ceil(Math.max(boardWidth, containerWidth))
     canvas.height = Math.ceil(boardHeight)
   }
@@ -106,17 +122,6 @@ export function setupSolitaire(container: HTMLElement): void {
   })
 
   const rect = () => canvas.getBoundingClientRect()
-
-  let stock: Card[] = []
-  let waste: Card[] = []
-  let foundations: Record<Suit, Card[]> = {
-    hearts: [],
-    diamonds: [],
-    clubs: [],
-    spades: [],
-  }
-  let tableau: Card[][] = [[], [], [], [], [], [], []]
-  let drag: DragState | null = null
 
   function cardColor(card: Card): 'red' | 'black' {
     return card.suit === 'hearts' || card.suit === 'diamonds' ? 'red' : 'black'
@@ -283,9 +288,9 @@ export function setupSolitaire(container: HTMLElement): void {
       const fontSize = Math.max(10, 20 * scale)
       const smallFontSize = fontSize * 0.85
       ctx.font = `700 ${fontSize}px Trebuchet MS`
-      ctx.fillText(label, x + scaledCardW * 0.1, y + scaledCardH * 0.3)
+      ctx.fillText(label, x + scaledCardW * 0.1, y + scaledCardH * 0.2)
       ctx.font = `700 ${smallFontSize}px Trebuchet MS`
-      ctx.fillText(label, x + scaledCardW * 0.6, y + scaledCardH * 0.9)
+      ctx.fillText(label, x + scaledCardW * 0.6, y + scaledCardH * 0.95)
     }
 
     ctx.restore()
@@ -652,6 +657,7 @@ export function setupSolitaire(container: HTMLElement): void {
   }
 
   function draw(): void {
+    updateCanvasSize()
     ctx.clearRect(0, 0, canvas.width, canvas.height)
     drawFoundationsAndTopRow()
     drawTableau()
