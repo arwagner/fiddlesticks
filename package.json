@@ -1,0 +1,16 @@
+{
+  "name": "fiddlesticks",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "deploy": "npm run build && rsync -az --delete dist/ root@187.124.159.132:/var/www/fiddlesticks/"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.2",
+    "vite": "^8.1.0"
+  }
+}
