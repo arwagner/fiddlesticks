@@ -12,7 +12,7 @@ requires_design: null
 readiness:
   research: ready
   design:   n/a
-  spec:     draft
+  spec:     ready
   plan:     none
   tasks:    none
 gate:
@@ -33,7 +33,10 @@ extends: []
 
 ## Notes
 - Landing page of the Fiddlesticks arcade. Source: `index.html`, `src/main.ts`, `src/games.ts`, `src/style.css`.
-- Shares the `slugify` slug-derivation invariant with `game-detail` (see `product-global.md`).
+- Cards link out to `game-detail` (feat-002) via `/game.html?game=<slug>`, sharing the `slugify`
+  slug-derivation invariant (see `product-global.md`). This is a runtime/slug coupling captured by the
+  shared invariant — the catalog still renders and links independently — so it is intentionally NOT a
+  gating `depends_on` (which would mis-mark this built feature as blocked on a peer).
 
 ## Work log
 - [x] **chg-001 spec change** (2026-07-15) — owner removed the 30 flavor games; `src/games.ts` trimmed to

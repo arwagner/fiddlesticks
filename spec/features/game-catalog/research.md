@@ -6,7 +6,8 @@ This is why `readiness.research` is `ready`: the "research" is the running syste
 ## Evidence
 - `index.html` — mounts `src/main.ts` into `#app`.
 - `src/main.ts` — renders the catalog header + search, holds `renderGames()` and the `slugify()` helper.
-- `src/games.ts` — the `GameItem` type and the static array of 31 games (`title`, `genre`, `description`).
+- `src/games.ts` — the `GameItem` type and the static array of games (`title`, `genre`, `description`);
+  trimmed to the single implemented game (Canvas Solitaire) under chg-001.
 - `src/style.css` — catalog layout, cards, empty state, search styling.
 
 ## Real user / job context
