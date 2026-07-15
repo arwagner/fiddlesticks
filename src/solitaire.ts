@@ -414,8 +414,9 @@ export function setupSolitaire(container: HTMLElement): void {
       source: { kind: 'waste' },
       x: pointX,
       y: pointY,
-      offsetX: CARD_W / 2,
-      offsetY: CARD_H / 2,
+      // feat-003/AC-14 (gap-002): scaled drag anchor so the lifted card sits under the pointer at any scale.
+      offsetX: scaledCardW / 2,
+      offsetY: scaledCardH / 2,
     }
   }
 
@@ -459,6 +460,15 @@ export function setupSolitaire(container: HTMLElement): void {
     }
 
     const movingTop = drag.cards[0]
+    const source = drag.source
+
+    // feat-003/AC-8 (gap-003): when a run leaves a tableau column for another pile, flip the card it
+    // exposed underneath. Skip when the cards land back on their own column (nothing net-exposed).
+    const revealExposedSource = (destCol: number | null): void => {
+      if (source.kind === 'tableau' && source.col !== destCol) {
+        revealLastInTableau(tableau[source.col])
+      }
+    }
 
     for (let foundationIndex = 0; foundationIndex < suits.length; foundationIndex += 1) {
       const suit = suits[foundationIndex]
@@ -467,6 +477,7 @@ export function setupSolitaire(container: HTMLElement): void {
       if (pointInRect(pointX, pointY, slot) && drag.cards.length === 1 && canPlaceOnFoundation(movingTop, suit)) {
         foundations[suit].push(movingTop)
         drag = null
+        revealExposedSource(null)
         checkWin()
         draw()
         return
@@ -477,12 +488,15 @@ export function setupSolitaire(container: HTMLElement): void {
       const x = pileX(col)
       const column = tableau[col]
       const ys = tableauCardPositions(column)
-      const bottomY = ys.length === 0 ? TABLEAU_Y + CARD_H : ys[ys.length - 1] + CARD_H
-      const insideColumn = pointX >= x && pointX <= x + CARD_W && pointY >= TABLEAU_Y && pointY <= bottomY + FACEUP_SHIFT
+      // feat-003/AC-4 + AC-14 (gap-002): hit-test in SCALED coordinates so drop targeting tracks the
+      // drawn card positions at every responsive scale, not only at scale 1.
+      const bottomY = ys.length === 0 ? scaledTableauY + scaledCardH : ys[ys.length - 1] + scaledCardH
+      const insideColumn = pointX >= x && pointX <= x + scaledCardW && pointY >= scaledTableauY && pointY <= bottomY + scaledFaceupShift
 
       if (insideColumn && canPlaceOnTableau(movingTop, column)) {
         column.push(...drag.cards)
         drag = null
+        revealExposedSource(col)
         draw()
         return
       }
@@ -557,7 +571,8 @@ export function setupSolitaire(container: HTMLElement): void {
       for (let index = column.length - 1; index >= 0; index -= 1) {
         const y = positions[index]
 
-        if (!pointInRect(point.x, point.y, { x, y, w: CARD_W, h: CARD_H })) {
+        // feat-003/AC-4 + AC-14 (gap-002): scaled pickup hit-test, matching the drawn card rect.
+        if (!pointInRect(point.x, point.y, { x, y, w: scaledCardW, h: scaledCardH })) {
           continue
         }
 
@@ -634,7 +649,9 @@ export function setupSolitaire(container: HTMLElement): void {
     for (let suitIndex = 0; suitIndex < suits.length; suitIndex += 1) {
       const suit = suits[suitIndex]
       const slot = foundationRect(suitIndex)
-      drawSlot(slot.x, slot.y, suitLabels[suit])
+      // feat-003/AC-3 (gap-001): foundations are not suit-locked — any Ace starts any empty
+      // foundation — so an empty slot shows a generic build hint, never a fixed suit label.
+      drawSlot(slot.x, slot.y, 'A-K')
 
       const top = foundations[suit][foundations[suit].length - 1]
       if (top) {
