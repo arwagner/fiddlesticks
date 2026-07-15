@@ -59,3 +59,14 @@ implemented, no new unrequested behavior, shared non-negotiables clean.
     exposed source card on every successful commit to a different pile (foundation :480 and tableau :499 branches).
 
 verdict: open 0 (missing 0, partial 0, contradicts 0, unrequested 0)
+
+## run 3 — 2026-07-15
+baseline: spec sha256:dc8a07ca4150 · plan sha256:84aaf5cb62ee · tasks sha256:804770d0895e
+context: post-implement re-audit (plan task T7). A behavior-preserving refactor extracted the pure rules
+and geometry into `src/solitaire-rules.ts` (imported by `src/solitaire.ts`) and added a Vitest suite
+(solitaire-rules/hittest/stock .test.ts). Auditor re-read both modules + tests: all 14 ACs still
+implemented, behavior identical, no new unrequested behavior; tests cite feat-003/AC-N for
+AC-1,2,3,4,5,6,7,8,9,10,11,12,14 (AC-13 remains manual per plan). Static/client-only and mobile
+touch-action intact; Vitest is a dev-only dependency. No gaps opened or closed.
+
+verdict: open 0 (missing 0, partial 0, contradicts 0, unrequested 0)

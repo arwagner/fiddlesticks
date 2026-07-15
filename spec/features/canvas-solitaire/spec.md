@@ -79,7 +79,7 @@ implementation that renders on a canvas and works with mouse or touch.
 - [ ] AC-10: When all 52 cards are on the foundations, the status region shows a win message.
 - [ ] AC-11: Restart deals a fresh shuffled game and resets the status text.
 - [ ] AC-12: The board scales to the container width (minimum scale 0.5) and redraws on window resize.
-- [ ] AC-13 (manual): During a drag the moving card(s) follow the pointer, and a `pointercancel` returns them to their source.
+- [ ] AC-13: During a drag the moving card(s) follow the pointer, and a `pointercancel` returns them to their source. (manual)
 - [ ] AC-14: Pointer targeting matches rendered card positions at **every** responsive scale — a click or drop aimed at a card's drawn rectangle selects/places on that card whether the board is scaled below or above 1.0, not only at scale 1.0. (Required by the `product-global.md` mobile/iOS NFR: phones render at non-1.0 scales.)
 
 ## Known limitations (by design)

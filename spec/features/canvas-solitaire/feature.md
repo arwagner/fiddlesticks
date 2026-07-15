@@ -3,7 +3,7 @@ schema_version: 2
 id: "feat-003"
 slug: "canvas-solitaire"
 title: "Canvas Klondike Solitaire"
-status: active
+status: done
 owner: "andrew"
 sprint: null
 external: null
@@ -14,7 +14,7 @@ readiness:
   design:   n/a
   spec:     ready
   plan:     ready
-  tasks:    none
+  tasks:    ready
 gate:
   analyze: pass
   product_global_hash: "sha256:bca9d7b6892f"
@@ -23,8 +23,11 @@ converge:
   last_run: 2026-07-15
   open: 0
   contradicts: 0
-human_signoff: []   # T6 (iOS device play-test) is a COMPLETION gate — implement registers its
-                    #   human_signoff when it reaches that task, so it blocks done, not implement-start.
+human_signoff:
+  - id: hs-1
+    description: "Task T6 — manual iOS-device play-test: drag visually follows the pointer (AC-13), and board scaling (AC-12) + pointer targeting (AC-14) are correct on a real phone. Verified by andrew 2026-07-15."
+    owner: andrew
+    resolved: true
 open_decisions: []
 overrides: []
 extends: []

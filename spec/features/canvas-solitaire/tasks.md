@@ -14,10 +14,13 @@ See `plan.md` for rationale and the AC verification table.
 - [x] Drag layer + pointercancel — `:646-681` — feat-003/AC-13
 
 ## Test coverage (new work)
-- [ ] T1: Add Vitest devDependency + `test`/`test:run` scripts; set `tests:` in `.spec-flow.md`
-- [ ] T2: Extract pure rules → `src/solitaire-rules.ts`; wire `solitaire.ts` to import them (behavior-preserving)
-- [ ] T3 [P]: `src/solitaire-rules.test.ts` — feat-003/AC-1, AC-3, AC-4, AC-5, AC-8, AC-9, AC-10
-- [ ] T4 [P]: `src/solitaire-hittest.test.ts` — feat-003/AC-14
-- [ ] T5 [P]: `src/solitaire-stock.test.ts` — feat-003/AC-2, AC-6
-- [ ] T6 [H]: Manual iOS-device play-test — feat-003/AC-11, AC-12, AC-13 (→ human_signoff hs-1)
-- [ ] T7: Re-run `/spec-flow:converge` after T2 to confirm behavior unchanged
+- [x] T1: Vitest devDependency + `test`/`test:watch` scripts; `tests:` set in `.spec-flow.md`. Smoke-tested green. (Deviation: used `test:watch` rather than the plan's `test:run`; `test` is the one-shot `vitest run`.)
+- [x] T2: Extracted pure rules/geometry → `src/solitaire-rules.ts`; `solitaire.ts` imports them. Behavior-preserving — verified by `tsc`, build, on-screen render, and converge run 3.
+- [x] T3 [P]: `src/solitaire-rules.test.ts` — feat-003/AC-1, AC-3, AC-4, AC-5, AC-7, AC-8, AC-9, AC-10, AC-11 (AC-7 + AC-11 added per analyze should-fix #1 / nice-to-have)
+- [x] T4 [P]: `src/solitaire-hittest.test.ts` — feat-003/AC-12, AC-14 (AC-12 scale unit-tested per analyze should-fix #2, not punted to manual)
+- [x] T5 [P]: `src/solitaire-stock.test.ts` — feat-003/AC-2, AC-6
+- [x] T6: Manual iOS-device play-test — feat-003/AC-13 (drag follows pointer) + on-device AC-11/AC-12/AC-14. Verified by andrew on 2026-07-15 (functionality confirmed on device). → hs-1 resolved.
+- [x] T7: Re-ran `/spec-flow:converge` (run 3) after T2 — drift 0, behavior unchanged.
+
+_Note: AC-9's pointercancel/return path is unit-tested via `returnToSource` (analyze should-fix #3);
+only the visual "card follows the pointer" claim (AC-13) remains manual._
