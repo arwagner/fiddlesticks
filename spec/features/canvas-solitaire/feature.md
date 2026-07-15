@@ -13,17 +13,18 @@ readiness:
   research: ready
   design:   n/a
   spec:     ready
-  plan:     none
+  plan:     ready
   tasks:    none
 gate:
-  analyze: not-run
-  product_global_hash: ""
-  constitution_hash: ""
+  analyze: pass
+  product_global_hash: "sha256:bca9d7b6892f"
+  constitution_hash: "sha256:d28d75305ea8"
 converge:
   last_run: 2026-07-15
   open: 0
   contradicts: 0
-human_signoff: []
+human_signoff: []   # T6 (iOS device play-test) is a COMPLETION gate — implement registers its
+                    #   human_signoff when it reaches that task, so it blocks done, not implement-start.
 open_decisions: []
 overrides: []
 extends: []
