@@ -2,6 +2,7 @@ import './style.css'
 import { games } from './games'
 import { setupSolitaire } from './solitaire'
 import { setupNonogram } from './nonogram'
+import { setupTwistedRopes } from './twisted-ropes'
 
 const app = document.querySelector<HTMLDivElement>('#app')
 
@@ -16,12 +17,26 @@ function slugify(value: string): string {
     .replace(/(^-|-$)/g, '')
 }
 
+type Launcher = {
+  rootId: string
+  rootClass?: string
+  setup: (container: HTMLElement) => void
+}
+
+const launchers = new Map<string, Launcher>([
+  [
+    slugify('Canvas Solitaire'),
+    { rootId: 'solitaire-root', rootClass: 'solitaire-root', setup: setupSolitaire },
+  ],
+  [slugify('Nonogram'), { rootId: 'nonogram-root', setup: setupNonogram }],
+  [slugify('Twisted Ropes'), { rootId: 'ropes-root', setup: setupTwistedRopes }],
+])
+
 const gameMap = new Map(games.map((game) => [slugify(game.title), game]))
 const params = new URLSearchParams(window.location.search)
 const gameKey = params.get('game') ?? ''
 const game = gameMap.get(gameKey)
-const solitaireSlug = slugify('Canvas Solitaire')
-const nonogramSlug = slugify('Nonogram')
+const launcher = launchers.get(gameKey)
 
 if (!game) {
   app.innerHTML = `
@@ -43,31 +58,21 @@ if (!game) {
         <h1>${game.title}</h1>
         <p>${game.description}</p>
         ${
-          gameKey === solitaireSlug
-            ? '<div id="solitaire-root" class="solitaire-root"></div>'
-            : gameKey === nonogramSlug
-              ? '<div id="nonogram-root"></div>'
-              : '<p class="hint">Game screen placeholder: connect your real game here.</p>'
+          launcher
+            ? `<div id="${launcher.rootId}"${launcher.rootClass ? ` class="${launcher.rootClass}"` : ''}></div>`
+            : '<p class="hint">Game screen placeholder: connect your real game here.</p>'
         }
       </article>
     </main>
   `
 
-  if (gameKey === solitaireSlug) {
-    const solitaireRoot = document.querySelector<HTMLDivElement>('#solitaire-root')
+  if (launcher) {
+    const root = document.querySelector<HTMLDivElement>(`#${launcher.rootId}`)
 
-    if (!solitaireRoot) {
-      throw new Error('Solitaire root not found')
+    if (!root) {
+      throw new Error(`Game root not found: ${launcher.rootId}`)
     }
 
-    setupSolitaire(solitaireRoot)
-  } else if (gameKey === nonogramSlug) {
-    const nonogramRoot = document.querySelector<HTMLDivElement>('#nonogram-root')
-
-    if (!nonogramRoot) {
-      throw new Error('Nonogram root not found')
-    }
-
-    setupNonogram(nonogramRoot)
+    launcher.setup(root)
   }
 }

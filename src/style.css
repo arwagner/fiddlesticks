@@ -370,6 +370,68 @@ h1 {
   background: var(--surface);
 }
 
+.ropes {
+  margin-top: 1rem;
+}
+
+.ropes-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  align-items: center;
+  margin-bottom: 0.8rem;
+}
+
+.ropes-toolbar button {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.22);
+  color: var(--text);
+  padding: 0.45rem 0.7rem;
+  cursor: pointer;
+}
+
+.ropes-toolbar button:hover {
+  border-color: var(--focus);
+}
+
+.ropes-count {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.ropes-count span {
+  font-size: 0.9rem;
+  min-width: 5.2rem;
+  text-align: center;
+}
+
+#ropes-status {
+  font-size: 0.95rem;
+  margin-left: auto;
+}
+
+#ropes-canvas {
+  width: 100%;
+  max-width: 640px;
+  aspect-ratio: 1;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: linear-gradient(165deg, #0b4a55, #07222a);
+  display: block;
+  touch-action: none;
+  cursor: grab;
+}
+
+#ropes-canvas:active {
+  cursor: grabbing;
+}
+
+.ropes .hint {
+  margin-top: 0.8rem;
+}
+
 /* wrong marks: the correct value, flagged red */
 .nono-wrong-filled {
   background: #cf3d48;
