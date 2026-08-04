@@ -2,7 +2,6 @@ import './style.css'
 import { games } from './games'
 import { setupSolitaire } from './solitaire'
 import { setupNonogram } from './nonogram'
-import { setupTwistedRopes } from './twisted-ropes'
 
 const app = document.querySelector<HTMLDivElement>('#app')
 
@@ -29,7 +28,6 @@ const launchers = new Map<string, Launcher>([
     { rootId: 'solitaire-root', rootClass: 'solitaire-root', setup: setupSolitaire },
   ],
   [slugify('Nonogram'), { rootId: 'nonogram-root', setup: setupNonogram }],
-  [slugify('Twisted Ropes'), { rootId: 'ropes-root', setup: setupTwistedRopes }],
 ])
 
 const gameMap = new Map(games.map((game) => [slugify(game.title), game]))
