@@ -65,6 +65,35 @@ test('mode toggle to Mark X, then a correct X commits', () => {
   expect(status(el)).toBe('Mistakes: 0')
 })
 
+test('solving the puzzle marks the grid won, so the board can show the win sweep', () => {
+  const el = mount()
+  const grid = el.querySelector('#nono-grid')!
+
+  expect(grid.classList.contains('nono-won')).toBe(false)
+
+  X_GRID.forEach((row, r) => {
+    row.forEach((filled, c) => {
+      if (filled) {
+        cell(el, r, c).click()
+      }
+    })
+  })
+
+  expect(grid.classList.contains('nono-won')).toBe(true)
+  expect(el.querySelector('#nono-status')!.classList.contains('nono-status-won')).toBe(true)
+  expect(status(el)).toBe('Solved! Mistakes: 0')
+})
+
+test('a click on a decided cell leaves the board alone, so the win sweep does not replay', () => {
+  const el = mount()
+  cell(el, 0, 0).click() // correct fill
+  const filled = cell(el, 0, 0)
+
+  filled.click() // the cell is decided, so this click changes nothing
+
+  expect(cell(el, 0, 0)).toBe(filled) // the same element, so render() did not rebuild the grid
+})
+
 test('feat-004/AC-8: New puzzle resets the board and the mistake count', () => {
   const el = mount()
   cell(el, 0, 1).click() // a mistake

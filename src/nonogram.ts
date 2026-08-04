@@ -46,10 +46,16 @@ export function setupNonogram(
       for (let c = 0; c < state.size; c += 1) {
         const cell = state.board[r][c]
         const glyph = cell === 'x' || cell === 'wrong-x' ? '✕' : ''
-        html += `<button type="button" class="nono-cell nono-${cell}" data-r="${r}" data-c="${c}" aria-label="row ${r + 1} column ${c + 1}">${glyph}</button>`
+        // The win sweep runs on a diagonal, so each cell waits for the one up and to the left of it.
+        const delay = `--nono-delay:${(r + c) * 45}ms`
+        html += `<button type="button" style="${delay}" class="nono-cell nono-${cell}" data-r="${r}" data-c="${c}" aria-label="row ${r + 1} column ${c + 1}">${glyph}</button>`
       }
     }
     grid.innerHTML = html
+
+    // The class drives the win sweep, which turns every cell to the filled color.
+    grid.classList.toggle('nono-won', state.won)
+    status.classList.toggle('nono-status-won', state.won)
 
     status.textContent = state.won ? `Solved! Mistakes: ${state.mistakes}` : `Mistakes: ${state.mistakes}`
   }
@@ -61,7 +67,14 @@ export function setupNonogram(
       return
     }
 
-    state = applyMark(state, Number(cell.dataset.r), Number(cell.dataset.c), mode)
+    const next = applyMark(state, Number(cell.dataset.r), Number(cell.dataset.c), mode)
+
+    // applyMark returns the same state when it ignores a click. Skip the redraw, or the win sweep replays.
+    if (next === state) {
+      return
+    }
+
+    state = next
     render()
   })
 
