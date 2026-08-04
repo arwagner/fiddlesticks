@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { test, expect, beforeEach } from 'vitest'
-import { setupNonogram } from './nonogram'
+import { setupNonogram, SIZES } from './nonogram'
 import { newGameFromSolution } from './nonogram-logic'
 
 beforeEach(() => {
@@ -92,6 +92,40 @@ test('a click on a decided cell leaves the board alone, so the win sweep does no
   filled.click() // the cell is decided, so this click changes nothing
 
   expect(cell(el, 0, 0)).toBe(filled) // the same element, so render() did not rebuild the grid
+})
+
+test('the size menu offers every size and starts on the one the caller asked for', () => {
+  const el = mount()
+  const select = el.querySelector<HTMLSelectElement>('#nono-size')!
+
+  expect([...select.options].map((option) => option.value)).toEqual(SIZES.map(String))
+  expect(select.value).toBe('5')
+})
+
+test('picking a size deals a new puzzle at that size', () => {
+  const el = document.createElement('div')
+  document.body.appendChild(el)
+  setupNonogram(el, 5) // the real generator, so the size actually changes
+  const select = el.querySelector<HTMLSelectElement>('#nono-size')!
+
+  expect(el.querySelectorAll('.nono-cell').length).toBe(25)
+
+  select.value = '10'
+  select.dispatchEvent(new Event('change'))
+
+  expect(el.querySelectorAll('.nono-cell').length).toBe(100)
+  expect(el.querySelectorAll('.nono-clue-col').length).toBe(10)
+  expect(el.querySelector('#nono-grid')!.getAttribute('data-scale')).toBe('md')
+})
+
+test('a size the caller asks for joins the menu when it is not on the list', () => {
+  const el = document.createElement('div')
+  document.body.appendChild(el)
+  setupNonogram(el, 7)
+  const select = el.querySelector<HTMLSelectElement>('#nono-size')!
+
+  expect([...select.options].map((option) => option.value)).toEqual(['5', '7', '8', '10', '15', '20'])
+  expect(select.value).toBe('7')
 })
 
 function rightClick(target: HTMLElement): MouseEvent {

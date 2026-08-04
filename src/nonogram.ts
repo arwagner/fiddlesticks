@@ -1,14 +1,35 @@
 import { newGame, applyMark, type GameState } from './nonogram-logic'
 
+// The board sizes the player can pick. Even 20×20 generates in about 15ms, so every one of these is cheap.
+export const SIZES = [5, 8, 10, 15, 20]
+
+// Below 46px a cell still takes a comfortable tap, so wide boards trade cell size for a board that fits.
+function scaleFor(size: number): 'sm' | 'md' | 'lg' {
+  if (size >= 15) {
+    return 'lg'
+  }
+
+  return size >= 10 ? 'md' : 'sm'
+}
+
 export function setupNonogram(
   container: HTMLElement,
   size = 8,
   createGame: (size: number) => GameState = newGame,
 ): void {
+  // Keep the starting size on the menu even when a caller asks for one that is not on the list.
+  const sizes = SIZES.includes(size) ? SIZES : [...SIZES, size].sort((a, b) => a - b)
+  const options = sizes
+    .map((n) => `<option value="${n}"${n === size ? ' selected' : ''}>${n} × ${n}</option>`)
+    .join('')
+
   container.innerHTML = `
     <div class="nonogram">
       <div class="nono-toolbar">
         <button id="nono-new" type="button">New puzzle</button>
+        <label class="nono-size">Size
+          <select id="nono-size">${options}</select>
+        </label>
         <div class="nono-mode" role="group" aria-label="Mark mode">
           <button type="button" data-mode="fill" class="active">Fill</button>
           <button type="button" data-mode="x">Mark X</button>
@@ -23,9 +44,10 @@ export function setupNonogram(
   const gridEl = container.querySelector<HTMLDivElement>('#nono-grid')
   const statusEl = container.querySelector<HTMLParagraphElement>('#nono-status')
   const newButton = container.querySelector<HTMLButtonElement>('#nono-new')
+  const sizeSelect = container.querySelector<HTMLSelectElement>('#nono-size')
   const modeButtons = Array.from(container.querySelectorAll<HTMLButtonElement>('.nono-mode button'))
 
-  if (!gridEl || !statusEl || !newButton) {
+  if (!gridEl || !statusEl || !newButton || !sizeSelect) {
     throw new Error('Nonogram UI elements are missing')
   }
 
@@ -37,6 +59,10 @@ export function setupNonogram(
 
   function render(): void {
     grid.style.setProperty('--n', String(state.size))
+    grid.dataset.scale = scaleFor(state.size)
+
+    // Hold the sweep to about 0.7s whatever the board size, so a 20×20 win does not crawl.
+    const step = 700 / Math.max(1, 2 * (state.size - 1))
 
     let html = '<div class="nono-corner"></div>'
     for (let c = 0; c < state.size; c += 1) {
@@ -48,7 +74,7 @@ export function setupNonogram(
         const cell = state.board[r][c]
         const glyph = cell === 'x' || cell === 'wrong-x' ? '✕' : ''
         // The win sweep runs on a diagonal, so each cell waits for the one up and to the left of it.
-        const delay = `--nono-delay:${(r + c) * 45}ms`
+        const delay = `--nono-delay:${Math.round((r + c) * step)}ms`
         html += `<button type="button" style="${delay}" class="nono-cell nono-${cell}" data-r="${r}" data-c="${c}" aria-label="row ${r + 1} column ${c + 1}">${glyph}</button>`
       }
     }
@@ -96,6 +122,12 @@ export function setupNonogram(
 
   newButton.addEventListener('click', () => {
     state = createGame(state.size)
+    render()
+  })
+
+  // A new size means a new puzzle. There is no way to keep the current board.
+  sizeSelect.addEventListener('change', () => {
+    state = createGame(Number(sizeSelect.value))
     render()
   })
 
