@@ -510,8 +510,8 @@ export function setupSolitaire(container: HTMLElement): void {
     const stockArea = stockRect()
     const wasteArea = wasteRect()
 
-    drawSlot(stockArea.x, stockArea.y, 'Stock')
-    drawSlot(wasteArea.x, wasteArea.y, 'Waste')
+    drawSlot(stockArea.x, stockArea.y)
+    drawSlot(wasteArea.x, wasteArea.y)
 
     if (stock.length > 0) {
       const top = stock[stock.length - 1]
