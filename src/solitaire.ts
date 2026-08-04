@@ -24,6 +24,9 @@ import {
   returnToSource,
 } from './solitaire-rules'
 
+// Trebuchet first for the rank digits; the symbol fonts back it up wherever it lacks a suit pip.
+const CARD_FONT = '"Trebuchet MS", "Apple Symbols", "Segoe UI Symbol", sans-serif'
+
 type DragState = {
   cards: Card[]
   source: Source
@@ -162,7 +165,7 @@ export function setupSolitaire(container: HTMLElement): void {
 
     if (label) {
       ctx.fillStyle = 'rgba(196, 246, 232, 0.7)'
-      ctx.font = `600 ${Math.max(9, 13 * layout.scale)}px Trebuchet MS`
+      ctx.font = `600 ${Math.max(9, 13 * layout.scale)}px ${CARD_FONT}`
       ctx.fillText(label, x + layout.cardW * 0.1, y + layout.cardH * 0.3)
     }
 
@@ -207,9 +210,9 @@ export function setupSolitaire(container: HTMLElement): void {
       ctx.fillStyle = color
       const fontSize = Math.max(10, 20 * layout.scale)
       const smallFontSize = fontSize * 0.85
-      ctx.font = `700 ${fontSize}px Trebuchet MS`
+      ctx.font = `700 ${fontSize}px ${CARD_FONT}`
       ctx.fillText(label, x + layout.cardW * 0.1, y + layout.cardH * 0.2)
-      ctx.font = `700 ${smallFontSize}px Trebuchet MS`
+      ctx.font = `700 ${smallFontSize}px ${CARD_FONT}`
       ctx.fillText(label, x + layout.cardW * 0.6, y + layout.cardH * 0.95)
     }
 

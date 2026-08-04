@@ -12,7 +12,8 @@ export type Card = {
 
 export const suits: Suit[] = ['hearts', 'diamonds', 'clubs', 'spades']
 export const rankLabels = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']
-export const suitLabels: Record<Suit, string> = { hearts: 'H', diamonds: 'D', clubs: 'C', spades: 'S' }
+// Filled Unicode pips (U+2660..U+2666). Colour comes from cardColor, so the solid glyphs suit both.
+export const suitLabels: Record<Suit, string> = { hearts: '♥', diamonds: '♦', clubs: '♣', spades: '♠' }
 
 // Base (unscaled) layout constants.
 export const CARD_W = 86
