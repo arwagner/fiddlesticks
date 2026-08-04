@@ -17,7 +17,9 @@ const NODES = 36
 const LAST = NODES - 1
 
 const GRAB = 26
+const SNAP = 46
 const GAP = 10
+const POSTS_PER_ROPE = 3
 const RELAX_DRAG = 10
 const RELAX_SETTLE = 40
 
@@ -27,6 +29,7 @@ const MAX_ROPES = 8
 type Pt = { x: number; y: number }
 type Post = Pt & { h: number }
 type Rope = { pa: Post; pb: Post; pts: Pt[]; seg: number; hue: number }
+type Board = { posts: Post[]; ropes: Rope[] }
 
 // `f` is a fractional node index into a rope's `pts`, so 4.5 is halfway along
 // the fifth segment. Height and arc length are both looked up from it.
@@ -212,23 +215,33 @@ function makeRope(pa: Post, pb: Post, hue: number): Rope {
   return { pa, pb, pts, seg: cum[cum.length - 1] / LAST, hue }
 }
 
-// Posts sit on a ring and every rope joins two opposite posts, so the chords all
-// pass near the middle and cross each other. Each rope gets one high anchor and
-// one low anchor, so no rope sits on top of everything by default.
-function buildBoard(count: number): Rope[] {
+// The ring carries three posts per rope, so a third of them are always empty and
+// a dragged end has somewhere to go. Posts are laid out so that occupied ones sit
+// at index 0 mod 3, their partners at 1 mod 3, and the spares at 2 mod 3. That
+// spreads the empty posts evenly around the ring instead of bunching them.
+//
+// Every rope joins two near-opposite posts, so the chords pass near the middle
+// and cross each other. Each rope starts with one high anchor and one low anchor,
+// so no rope sits on top of everything before you touch it.
+function buildBoard(count: number): Board {
   const posts: Post[] = []
   const ropes: Rope[] = []
-  const total = count * 2
+  const total = count * POSTS_PER_ROPE
+  const span = 3 * Math.floor(count / 2) + 1
 
   for (let j = 0; j < total; j += 1) {
-    const angle = (j / total) * Math.PI * 2 + (Math.random() - 0.5) * 0.2
+    const angle = (j / total) * Math.PI * 2 + (Math.random() - 0.5) * 0.12
 
-    posts.push({ x: CX + Math.cos(angle) * RING, y: CY + Math.sin(angle) * RING, h: 0 })
+    posts.push({
+      x: CX + Math.cos(angle) * RING,
+      y: CY + Math.sin(angle) * RING,
+      h: Math.random(),
+    })
   }
 
   for (let j = 0; j < count; j += 1) {
-    const pa = posts[j]
-    const pb = posts[j + count]
+    const pa = posts[3 * j]
+    const pb = posts[(3 * j + span) % total]
     const high = 0.58 + Math.random() * 0.42
     const low = Math.random() * 0.42
 
@@ -243,7 +256,7 @@ function buildBoard(count: number): Rope[] {
     ropes.push(makeRope(pa, pb, (j * 360) / count + Math.random() * 18))
   }
 
-  return ropes
+  return { posts, ropes }
 }
 
 function liftFree(ropes: Rope[]): number {
@@ -264,20 +277,52 @@ function liftFree(ropes: Rope[]): number {
 
 // Keep rebuilding until the opening board holds most of its ropes. Boards that
 // collapse on sight are the generator's fault, not the player's.
-function freshBoard(count: number): Rope[] {
-  let best: Rope[] = []
+function freshBoard(count: number): Board {
+  let best: Board = { posts: [], ropes: [] }
 
   for (let attempt = 0; attempt < 24; attempt += 1) {
-    const ropes = buildBoard(count)
+    const board = buildBoard(count)
 
-    liftFree(ropes)
+    liftFree(board.ropes)
 
-    if (ropes.length > best.length) {
-      best = ropes
+    if (board.ropes.length > best.ropes.length) {
+      best = board
     }
 
-    if (best.length >= Math.max(MIN_ROPES, count - 1)) {
+    if (best.ropes.length >= Math.max(MIN_ROPES, count - 1)) {
       return best
+    }
+  }
+
+  return best
+}
+
+function isTaken(post: Post, ropes: Rope[]): boolean {
+  return ropes.some((rope) => rope.pa === post || rope.pb === post)
+}
+
+// A dragged end may only land on an empty post that the rope is long enough to
+// reach from its other anchor. Anything else drops it back where it started.
+function dropTarget(board: Board, rope: Rope, head: number, at: Pt): Post | null {
+  const anchor = head === 0 ? rope.pb : rope.pa
+  const reach = rope.seg * LAST * 0.985
+  let best: Post | null = null
+  let bestDist = SNAP
+
+  for (const post of board.posts) {
+    if (isTaken(post, board.ropes)) {
+      continue
+    }
+
+    if (Math.hypot(post.x - anchor.x, post.y - anchor.y) > reach) {
+      continue
+    }
+
+    const d = Math.hypot(post.x - at.x, post.y - at.y)
+
+    if (d < bestDist) {
+      bestDist = d
+      best = post
     }
   }
 
@@ -297,7 +342,7 @@ export function setupTwistedRopes(container: HTMLElement): void {
         <p id="ropes-status" aria-live="polite"></p>
       </div>
       <canvas id="ropes-canvas" width="${BOARD}" height="${BOARD}" aria-label="Rope board"></canvas>
-      <p class="hint">Drag a rope end. A rope lifts away once it lies on top at every crossing.</p>
+      <p class="hint">Drag a rope end onto an empty post to re-slope the rope. A rope lifts away once it lies on top at every crossing.</p>
     </div>
   `
 
@@ -324,7 +369,7 @@ export function setupTwistedRopes(container: HTMLElement): void {
   const label = countLabel
 
   let count = 5
-  let ropes: Rope[] = []
+  let board: Board = { posts: [], ropes: [] }
   let moves = 0
   let solved = false
   let drag: { rope: Rope; head: number; pointerId: number; from: Pt; moved: boolean } | null = null
@@ -418,6 +463,21 @@ export function setupTwistedRopes(container: HTMLElement): void {
     ctx.stroke()
   }
 
+  // An empty post reads as a hollow ring. Its size is its height, so you can
+  // pick a landing spot by eye. While you drag, the posts you can actually reach
+  // light up and the rest stay dim.
+  function drawEmptyPost(post: Post, reachable: boolean): void {
+    const r = 7 + post.h * 6
+
+    ctx.beginPath()
+    ctx.arc(post.x, post.y, r, 0, Math.PI * 2)
+    ctx.fillStyle = 'rgba(3, 26, 32, 0.8)'
+    ctx.fill()
+    ctx.lineWidth = reachable ? 3 : 1.5
+    ctx.strokeStyle = reachable ? '#ffe08a' : 'rgba(154, 235, 213, 0.35)'
+    ctx.stroke()
+  }
+
   function render(): void {
     ctx.clearRect(0, 0, BOARD, BOARD)
 
@@ -430,6 +490,22 @@ export function setupTwistedRopes(container: HTMLElement): void {
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
 
+    const ropes = board.ropes
+    const held = drag
+
+    for (const post of board.posts) {
+      if (isTaken(post, ropes)) {
+        continue
+      }
+
+      const anchor = held ? (held.head === 0 ? held.rope.pb : held.rope.pa) : null
+      const reach = held ? held.rope.seg * LAST * 0.985 : 0
+      const reachable =
+        anchor !== null && Math.hypot(post.x - anchor.x, post.y - anchor.y) <= reach
+
+      drawEmptyPost(post, reachable)
+    }
+
     for (const rope of ropes) {
       drawShadow(rope)
     }
@@ -441,8 +517,8 @@ export function setupTwistedRopes(container: HTMLElement): void {
     })
 
     for (const rope of ropes) {
-      const heldA = drag !== null && drag.rope === rope && drag.head === 0
-      const heldB = drag !== null && drag.rope === rope && drag.head === LAST
+      const heldA = held !== null && held.rope === rope && held.head === 0
+      const heldB = held !== null && held.rope === rope && held.head === LAST
 
       drawPost(rope, rope.pa, heldA)
       drawPost(rope, rope.pb, heldB)
@@ -458,9 +534,9 @@ export function setupTwistedRopes(container: HTMLElement): void {
   }
 
   function reset(): void {
-    ropes = freshBoard(count)
+    board = freshBoard(count)
     moves = 0
-    solved = ropes.length === 0
+    solved = board.ropes.length === 0
     drag = null
     render()
   }
@@ -482,7 +558,7 @@ export function setupTwistedRopes(container: HTMLElement): void {
     const p = pointOf(event)
     let bestDist = GRAB
 
-    for (const rope of ropes) {
+    for (const rope of board.ropes) {
       for (const head of [0, LAST]) {
         const end = rope.pts[head]
         const d = Math.hypot(end.x - p.x, end.y - p.y)
@@ -537,18 +613,31 @@ export function setupTwistedRopes(container: HTMLElement): void {
     }
 
     const rope = drag.rope
-    const post = drag.head === 0 ? rope.pa : rope.pb
+    const head = drag.head
     const counted = drag.moved
+    const landing = counted ? dropTarget(board, rope, head, rope.pts[head]) : null
 
-    rope.pts[drag.head] = { x: post.x, y: post.y }
+    // Land on an empty post and the rope takes that post's height, which is what
+    // re-slopes it. Land anywhere else and the end goes back where it started.
+    if (landing) {
+      if (head === 0) {
+        rope.pa = landing
+      } else {
+        rope.pb = landing
+      }
+    }
+
+    const post = head === 0 ? rope.pa : rope.pb
+
+    rope.pts[head] = { x: post.x, y: post.y }
     relax(rope, RELAX_SETTLE)
     drag = null
 
     // A tap on a post that never moved is not a move.
     if (counted) {
       moves += 1
-      liftFree(ropes)
-      solved = ropes.length === 0
+      liftFree(board.ropes)
+      solved = board.ropes.length === 0
     }
 
     render()
