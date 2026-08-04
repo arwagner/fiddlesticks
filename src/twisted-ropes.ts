@@ -1,9 +1,16 @@
 // Twisted Ropes - throwaway prototype.
 //
-// The rule we are testing: every rope slopes evenly between the heights of its
-// two posts. Where two ropes cross, the locally higher one lies on top. A rope
-// that lies on top at EVERY crossing can be lifted clear, so it leaves the
-// board. Ropes have a fixed length, so you cannot route one around the outside.
+// The rule we are testing: a crossing REMEMBERS which rope lies on top. Slide
+// the ropes about and the crossing slides with them, keeping its answer. The
+// only way to change it is to pull the ropes apart, so the crossing stops
+// existing, and then bring them back together to make a fresh one. A rope that
+// lies on top at EVERY crossing can be lifted clear, so it leaves the board.
+// Ropes have a fixed length, so you cannot route one around the outside.
+//
+// Hole heights no longer arbitrate. They only decide the crossings a board
+// opens with. After that the board is memory, not geometry. An earlier version
+// derived every crossing from the heights, which meant moving a rope end could
+// flip a crossing on the far side of the board with nothing visible causing it.
 //
 // No tests and no logic/view split on purpose. This exists to be played and
 // then rewritten. See the grilling session that produced it.
@@ -33,10 +40,22 @@ const MAX_ROPES = 8
 
 type Pt = { x: number; y: number }
 type Post = Pt & { h: number }
-type Rope = { pa: Post; pb: Post; pts: Pt[]; seg: number; hue: number }
+type Rope = { id: number; pa: Post; pb: Post; pts: Pt[]; seg: number; hue: number }
+
+// A crossing is remembered, not recomputed. `aOver` says whether rope `aId` lies
+// on top of rope `bId` here, and it is set once when the crossing first forms.
+// Sliding the ropes about carries it along. Only pulling them apart clears it.
+type Crossing = { aId: number; bId: number; fa: number; fb: number } & Pt & { aOver: boolean }
+
 // `grid` is 0 for a random ring board, or the side length of the pegboard for
 // the fixed test board. Layout, post size, and snap distance all key off it.
-type Board = { posts: Post[]; ropes: Rope[]; grid: number }
+type Board = { posts: Post[]; ropes: Rope[]; grid: number; crossings: Crossing[] }
+
+// How far a crossing may travel between two recomputes and still count as the
+// same crossing. Generous, because a fast drag moves one a long way per frame.
+const MATCH_DIST = 90
+
+let nextRopeId = 1
 
 // `f` is a fractional node index into a rope's `pts`, so 4.5 is halfway along
 // the fifth segment. Height and arc length are both looked up from it.
@@ -131,8 +150,9 @@ function heightAt(rope: Rope, f: number): number {
   return rope.pa.h + (rope.pb.h - rope.pa.h) * (f / LAST)
 }
 
-function crossingsOf(ropes: Rope[]): Cross[][] {
-  const out: Cross[][] = ropes.map(() => [])
+// Where the ropes physically overlap, with no opinion about who is on top.
+function geometricCrossings(ropes: Rope[]): Omit<Crossing, 'aOver'>[] {
+  const out: Omit<Crossing, 'aOver'>[] = []
 
   for (let i = 0; i < ropes.length; i += 1) {
     for (let j = i + 1; j < ropes.length; j += 1) {
@@ -147,16 +167,88 @@ function crossingsOf(ropes: Rope[]): Cross[][] {
             continue
           }
 
-          const fr = a + hit.t
-          const fs = b + hit.u
-          const zr = heightAt(r, fr)
-          const zs = heightAt(s, fs)
-
-          out[i].push({ f: fr, over: zr > zs })
-          out[j].push({ f: fs, over: zs >= zr })
+          out.push({
+            aId: r.id,
+            bId: s.id,
+            fa: a + hit.t,
+            fb: b + hit.u,
+            x: r.pts[a].x + (r.pts[a + 1].x - r.pts[a].x) * hit.t,
+            y: r.pts[a].y + (r.pts[a + 1].y - r.pts[a].y) * hit.t,
+          })
         }
       }
     }
+  }
+
+  return out
+}
+
+// Carry each remembered over-or-under onto the crossing that took its place.
+// A crossing that slid a short way is the same crossing and keeps its state.
+// A crossing with no ancestor is genuinely new: it was made by the rope you are
+// holding, so that rope lands on top, because your hand is above the board.
+// With nothing held, the hole heights decide, which is how a board opens.
+function syncCrossings(board: Board, dragged: Rope | null): void {
+  const byId = new Map(board.ropes.map((rope) => [rope.id, rope]))
+  const previous = board.crossings
+  const claimed = new Set<number>()
+  const next: Crossing[] = []
+
+  for (const found of geometricCrossings(board.ropes)) {
+    let bestAt = -1
+    let bestDist = MATCH_DIST
+
+    for (let k = 0; k < previous.length; k += 1) {
+      const old = previous[k]
+
+      if (claimed.has(k) || old.aId !== found.aId || old.bId !== found.bId) {
+        continue
+      }
+
+      const d = Math.hypot(old.x - found.x, old.y - found.y)
+
+      if (d < bestDist) {
+        bestDist = d
+        bestAt = k
+      }
+    }
+
+    if (bestAt >= 0) {
+      claimed.add(bestAt)
+      next.push({ ...found, aOver: previous[bestAt].aOver })
+      continue
+    }
+
+    if (dragged && dragged.id === found.aId) {
+      next.push({ ...found, aOver: true })
+    } else if (dragged && dragged.id === found.bId) {
+      next.push({ ...found, aOver: false })
+    } else {
+      const a = byId.get(found.aId)
+      const b = byId.get(found.bId)
+
+      next.push({ ...found, aOver: !a || !b || heightAt(a, found.fa) > heightAt(b, found.fb) })
+    }
+  }
+
+  board.crossings = next
+}
+
+// The remembered crossings, split out per rope, in the order the ropes sit in.
+function ropeCrossings(board: Board): Cross[][] {
+  const out: Cross[][] = board.ropes.map(() => [])
+  const slot = new Map(board.ropes.map((rope, i) => [rope.id, i]))
+
+  for (const cross of board.crossings) {
+    const a = slot.get(cross.aId)
+    const b = slot.get(cross.bId)
+
+    if (a === undefined || b === undefined) {
+      continue
+    }
+
+    out[a].push({ f: cross.fa, over: cross.aOver })
+    out[b].push({ f: cross.fb, over: !cross.aOver })
   }
 
   return out
@@ -227,7 +319,9 @@ function makeRope(
   const pts = resample(dense, NODES)
   const cum = cumulative(pts)
 
-  return { pa, pb, pts, seg: cum[cum.length - 1] / LAST, hue }
+  nextRopeId += 1
+
+  return { id: nextRopeId, pa, pb, pts, seg: cum[cum.length - 1] / LAST, hue }
 }
 
 // The ring carries three posts per rope, so a third of them are always empty and
@@ -271,7 +365,15 @@ function buildBoard(count: number): Board {
     ropes.push(makeRope(pa, pb, (j * 360) / count + Math.random() * 18))
   }
 
-  return { posts, ropes, grid: 0 }
+  return settle({ posts, ropes, grid: 0, crossings: [] })
+}
+
+// A board opens with its crossings decided by the hole heights. From then on the
+// crossings are memory, and the heights never speak again.
+function settle(board: Board): Board {
+  syncCrossings(board, null)
+
+  return board
 }
 
 function gridPos(row: number, col: number, grid: number): Pt {
@@ -320,21 +422,22 @@ function buildTestBoard(): Board {
     makeRope(hole(1, 2), hole(12, 2), 135, -0.32),
   ]
 
-  return { posts, ropes, grid: GRID }
+  return settle({ posts, ropes, grid: GRID, crossings: [] })
 }
 
-function liftFree(ropes: Rope[]): number {
+function liftFree(board: Board): number {
   let lifted = 0
 
   for (;;) {
-    const crossings = crossingsOf(ropes)
-    const idx = crossings.findIndex((list) => list.every((cross) => cross.over))
+    syncCrossings(board, null)
+
+    const idx = ropeCrossings(board).findIndex((list) => list.every((cross) => cross.over))
 
     if (idx < 0) {
       return lifted
     }
 
-    ropes.splice(idx, 1)
+    board.ropes.splice(idx, 1)
     lifted += 1
   }
 }
@@ -342,12 +445,12 @@ function liftFree(ropes: Rope[]): number {
 // Keep rebuilding until the opening board holds most of its ropes. Boards that
 // collapse on sight are the generator's fault, not the player's.
 function freshBoard(count: number): Board {
-  let best: Board = { posts: [], ropes: [], grid: 0 }
+  let best: Board = { posts: [], ropes: [], grid: 0, crossings: [] }
 
   for (let attempt = 0; attempt < 24; attempt += 1) {
     const board = buildBoard(count)
 
-    liftFree(board.ropes)
+    liftFree(board)
 
     if (board.ropes.length > best.ropes.length) {
       best = board
@@ -450,7 +553,7 @@ export function setupTwistedRopes(container: HTMLElement): void {
   // leaving, so the board does not evaporate under you.
   let autoLift = false
   let count = 5
-  let board: Board = { posts: [], ropes: [], grid: 0 }
+  let board: Board = { posts: [], ropes: [], grid: 0, crossings: [] }
   let moves = 0
   let solved = false
   let drag: { rope: Rope; head: number; pointerId: number; from: Pt; moved: boolean } | null = null
@@ -597,6 +700,7 @@ export function setupTwistedRopes(container: HTMLElement): void {
   }
 
   function render(): void {
+    syncCrossings(board, drag ? drag.rope : null)
     ctx.clearRect(0, 0, BOARD, BOARD)
 
     if (board.grid) {
@@ -632,7 +736,7 @@ export function setupTwistedRopes(container: HTMLElement): void {
       drawShadow(rope)
     }
 
-    const crossings = crossingsOf(ropes)
+    const crossings = ropeCrossings(board)
     const free = crossings.map((list) => list.every((cross) => cross.over))
 
     ropes.forEach((rope, i) => {
@@ -772,7 +876,7 @@ export function setupTwistedRopes(container: HTMLElement): void {
       moves += 1
 
       if (autoLift) {
-        liftFree(board.ropes)
+        liftFree(board)
         solved = board.ropes.length === 0
       }
     }
@@ -791,7 +895,7 @@ export function setupTwistedRopes(container: HTMLElement): void {
     autoLift = !autoLift
 
     if (autoLift) {
-      liftFree(board.ropes)
+      liftFree(board)
       solved = board.ropes.length === 0
     }
 
