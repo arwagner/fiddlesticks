@@ -1,5 +1,7 @@
 // Pure, size-parameterized nonogram rules for feat-004 (no DOM) — unit-testable. nonogram.ts renders it.
 
+import { isLineSolvable } from './nonogram-solver'
+
 // 'wrong-filled' / 'wrong-x' hold the CORRECT value for a cell the player marked wrong — rendered red.
 export type Cell = 'blank' | 'filled' | 'x' | 'wrong-filled' | 'wrong-x'
 
@@ -97,8 +99,28 @@ export function newGameFromSolution(solution: boolean[][]): GameState {
   }
 }
 
+// A puzzle the player can finish by line logic alone, so no step needs a guess. Random grids fail this
+// often enough to matter: about 1 in 4 at size 8. Generate and test is cheap here, because a test costs
+// well under a millisecond and most grids pass on the first or second try.
+//
+// If every attempt fails, this returns the last grid. That puzzle may need a guess. The cap is high enough
+// that the case is not reachable in practice at the sizes this game uses.
+export function generateSolvableSolution(size: number, maxAttempts = 200): boolean[][] {
+  let solution = generateSolution(size)
+
+  for (let attempt = 1; attempt < maxAttempts; attempt += 1) {
+    if (isLineSolvable(rowClues(solution), colClues(solution))) {
+      return solution
+    }
+
+    solution = generateSolution(size)
+  }
+
+  return solution
+}
+
 export function newGame(size: number): GameState {
-  return newGameFromSolution(generateSolution(size))
+  return newGameFromSolution(generateSolvableSolution(size))
 }
 
 function cloneBoard(board: Cell[][]): Cell[][] {
