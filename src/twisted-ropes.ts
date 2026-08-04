@@ -32,6 +32,20 @@ const POSTS_PER_ROPE = 3
 // the left. It exists to make the mechanic inspectable, not to be a good puzzle.
 const GRID = 12
 const MARGIN = 64
+
+// How far the test ropes bow off the straight line, as a fraction of the gap
+// between their holes. This is what gives a rope slack, and slack is what lets
+// it be routed around anything.
+//
+// Measured on this board, sweeping every legal move for red from both ends:
+//   bow 0.32 -> 1.06x length, 172 legal moves, 0 free red
+//   bow 0.60 -> 1.20x length, 247 legal moves, 0 free red
+//   bow 0.90 -> 1.40x length, 227 legal moves, 0 free red
+//   bow 1.20 -> 1.63x length, 200 legal moves, 5 free red
+//   bow 1.60 -> 1.97x length, the ropes no longer even cross at the start
+// Below 1.63x the ropes are too taut to reach around green's end at (2,1),
+// which sits hard against the top edge with no room above it.
+const TEST_BOW = 1.2
 const RELAX_DRAG = 10
 const RELAX_SETTLE = 40
 
@@ -54,6 +68,15 @@ type Board = { posts: Post[]; ropes: Rope[]; grid: number; crossings: Crossing[]
 // How far a crossing may travel between two recomputes and still count as the
 // same crossing. Generous, because a fast drag moves one a long way per frame.
 const MATCH_DIST = 90
+
+// How close to a rope's tip a crossing must be to count as having slid off the
+// end, in node indices. A rope has LAST segments, so this is a few of them.
+const END_ZONE = 2.5
+
+// The drag advances the held end in short hops so the rope can catch on another
+// rope part way. Each hop is checked, and the first illegal one stops the move.
+const HOP = 4
+const MAX_HOPS = 48
 
 let nextRopeId = 1
 
@@ -151,13 +174,19 @@ function heightAt(rope: Rope, f: number): number {
 }
 
 // Where the ropes physically overlap, with no opinion about who is on top.
-function geometricCrossings(ropes: Rope[]): Omit<Crossing, 'aOver'>[] {
+// Pass `only` to look at just the pairs that include one rope. Nothing else can
+// have changed when a single rope moves.
+function geometricCrossings(ropes: Rope[], only: Rope | null = null): Omit<Crossing, 'aOver'>[] {
   const out: Omit<Crossing, 'aOver'>[] = []
 
   for (let i = 0; i < ropes.length; i += 1) {
     for (let j = i + 1; j < ropes.length; j += 1) {
       const r = ropes[i]
       const s = ropes[j]
+
+      if (only && r !== only && s !== only) {
+        continue
+      }
 
       for (let a = 0; a < LAST; a += 1) {
         for (let b = 0; b < LAST; b += 1) {
@@ -188,6 +217,87 @@ function geometricCrossings(ropes: Rope[]): Omit<Crossing, 'aOver'>[] {
 // A crossing with no ancestor is genuinely new: it was made by the rope you are
 // holding, so that rope lands on top, because your hand is above the board.
 // With nothing held, the hole heights decide, which is how a board opens.
+type Found = Omit<Crossing, 'aOver'>
+
+// Which unclaimed earlier crossing, if any, this one grew out of.
+function ancestorOf(previous: Found[], claimed: Set<number>, found: Found): number {
+  let bestAt = -1
+  let bestDist = MATCH_DIST
+
+  for (let k = 0; k < previous.length; k += 1) {
+    const old = previous[k]
+
+    if (claimed.has(k) || old.aId !== found.aId || old.bId !== found.bId) {
+      continue
+    }
+
+    const d = Math.hypot(old.x - found.x, old.y - found.y)
+
+    if (d < bestDist) {
+      bestDist = d
+      bestAt = k
+    }
+  }
+
+  return bestAt
+}
+
+// A crossing may only be born or die where a rope END sweeps past another rope.
+// One that appears or vanishes in the middle of both ropes means the two ropes
+// went through each other, and rope cannot do that.
+function atEnd(f: number): boolean {
+  return f <= END_ZONE || f >= LAST - END_ZONE
+}
+
+function legalMove(board: Board, moved: Rope): boolean {
+  const before = board.crossings.filter((c) => c.aId === moved.id || c.bId === moved.id)
+  const claimed = new Set<number>()
+
+  for (const found of geometricCrossings(board.ropes, moved)) {
+    const at = ancestorOf(before, claimed, found)
+
+    if (at >= 0) {
+      claimed.add(at)
+      continue
+    }
+
+    if (!atEnd(found.fa) && !atEnd(found.fb)) {
+      return false
+    }
+  }
+
+  for (let k = 0; k < before.length; k += 1) {
+    if (!claimed.has(k) && !atEnd(before[k].fa) && !atEnd(before[k].fb)) {
+      return false
+    }
+  }
+
+  return true
+}
+
+// Accept a move that legalMove has already approved. Only the pairs touching the
+// moved rope can have changed, so the rest of the board is left alone.
+function commitMove(board: Board, moved: Rope): void {
+  const involves = (c: Crossing): boolean => c.aId === moved.id || c.bId === moved.id
+  const keep = board.crossings.filter((c) => !involves(c))
+  const before = board.crossings.filter(involves)
+  const claimed = new Set<number>()
+  const next: Crossing[] = []
+
+  for (const found of geometricCrossings(board.ropes, moved)) {
+    const at = ancestorOf(before, claimed, found)
+
+    if (at >= 0) {
+      claimed.add(at)
+      next.push({ ...found, aOver: before[at].aOver })
+    } else {
+      next.push({ ...found, aOver: found.aId === moved.id })
+    }
+  }
+
+  board.crossings = keep.concat(next)
+}
+
 function syncCrossings(board: Board, dragged: Rope | null): void {
   const byId = new Map(board.ropes.map((rope) => [rope.id, rope]))
   const previous = board.crossings
@@ -195,27 +305,11 @@ function syncCrossings(board: Board, dragged: Rope | null): void {
   const next: Crossing[] = []
 
   for (const found of geometricCrossings(board.ropes)) {
-    let bestAt = -1
-    let bestDist = MATCH_DIST
+    const at = ancestorOf(previous, claimed, found)
 
-    for (let k = 0; k < previous.length; k += 1) {
-      const old = previous[k]
-
-      if (claimed.has(k) || old.aId !== found.aId || old.bId !== found.bId) {
-        continue
-      }
-
-      const d = Math.hypot(old.x - found.x, old.y - found.y)
-
-      if (d < bestDist) {
-        bestDist = d
-        bestAt = k
-      }
-    }
-
-    if (bestAt >= 0) {
-      claimed.add(bestAt)
-      next.push({ ...found, aOver: previous[bestAt].aOver })
+    if (at >= 0) {
+      claimed.add(at)
+      next.push({ ...found, aOver: previous[at].aOver })
       continue
     }
 
@@ -395,9 +489,9 @@ function gridHeight(row: number): number {
   return (row - 1) / (GRID - 1)
 }
 
-// The fixed board: 12 x 12 holes, a red rope from row 1 column 1 to row 7
-// column 10, and a green rope from row 1 column 2 to row 12 column 2.
-function buildTestBoard(): Board {
+// The fixed board: 12 x 12 holes, a red rope from (1,1) to (10,7) and a green
+// rope from (2,1) to (2,12). Holes are named (x,y), so column then row.
+function buildTestBoard(bow = TEST_BOW): Board {
   const rows: Post[][] = []
   const posts: Post[] = []
 
@@ -415,11 +509,11 @@ function buildTestBoard(): Board {
     rows.push(line)
   }
 
-  const hole = (row: number, col: number): Post => rows[row - 1][col - 1]
+  const hole = (x: number, y: number): Post => rows[y - 1][x - 1]
 
   const ropes = [
-    makeRope(hole(1, 1), hole(7, 10), 0, 0.32),
-    makeRope(hole(1, 2), hole(12, 2), 135, -0.32),
+    makeRope(hole(1, 1), hole(10, 7), 0, bow),
+    makeRope(hole(2, 1), hole(2, 12), 135, -bow),
   ]
 
   return settle({ posts, ropes, grid: GRID, crossings: [] })
@@ -468,16 +562,18 @@ function isTaken(post: Post, ropes: Rope[]): boolean {
   return ropes.some((rope) => rope.pa === post || rope.pb === post)
 }
 
-// A dragged end may only land on an empty post that the rope is long enough to
-// reach from its other anchor. Anything else drops it back where it started.
+// A dragged end may only land on a post that is empty, or on the one it came
+// from, and only if the rope is long enough to reach it from its other anchor.
+// Anything else cancels the move.
 function dropTarget(board: Board, rope: Rope, head: number, at: Pt): Post | null {
   const anchor = head === 0 ? rope.pb : rope.pa
+  const own = head === 0 ? rope.pa : rope.pb
   const reach = rope.seg * LAST * 0.985
   let best: Post | null = null
   let bestDist = gridSnap(board.grid)
 
   for (const post of board.posts) {
-    if (isTaken(post, board.ropes)) {
+    if (post !== own && isTaken(post, board.ropes)) {
       continue
     }
 
@@ -556,7 +652,21 @@ export function setupTwistedRopes(container: HTMLElement): void {
   let board: Board = { posts: [], ropes: [], grid: 0, crossings: [] }
   let moves = 0
   let solved = false
-  let drag: { rope: Rope; head: number; pointerId: number; from: Pt; moved: boolean } | null = null
+  // The `was` fields are the board as it stood when you grabbed the end. A drag
+  // that cannot land anywhere legal winds all of it back.
+  let drag:
+    | {
+        rope: Rope
+        head: number
+        pointerId: number
+        from: Pt
+        moved: boolean
+        wasPts: Pt[]
+        wasPa: Post
+        wasPb: Post
+        wasCrossings: Crossing[]
+      }
+    | null = null
 
   const dpr = Math.min(window.devicePixelRatio || 1, 2)
 
@@ -699,8 +809,9 @@ export function setupTwistedRopes(container: HTMLElement): void {
     }
   }
 
+  // Crossings are not recomputed here. Every geometry change goes through
+  // commitMove or liftFree, so board.crossings is already current.
   function render(): void {
-    syncCrossings(board, drag ? drag.rope : null)
     ctx.clearRect(0, 0, BOARD, BOARD)
 
     if (board.grid) {
@@ -809,6 +920,10 @@ export function setupTwistedRopes(container: HTMLElement): void {
             pointerId: event.pointerId,
             from: { x: end.x, y: end.y },
             moved: false,
+            wasPts: rope.pts.map((q) => ({ x: q.x, y: q.y })),
+            wasPa: rope.pa,
+            wasPb: rope.pb,
+            wasCrossings: board.crossings.map((c) => ({ ...c })),
           }
         }
       }
@@ -832,18 +947,55 @@ export function setupTwistedRopes(container: HTMLElement): void {
     const d = Math.hypot(p.x - anchor.x, p.y - anchor.y)
     const scale = d > reach ? reach / d : 1
 
-    rope.pts[drag.head] = {
-      x: anchor.x + (p.x - anchor.x) * scale,
-      y: anchor.y + (p.y - anchor.y) * scale,
-    }
-
     if (Math.hypot(p.x - drag.from.x, p.y - drag.from.y) > 3) {
       drag.moved = true
     }
 
-    relax(rope, RELAX_DRAG)
+    hopEndTo(rope, drag.head, {
+      x: anchor.x + (p.x - anchor.x) * scale,
+      y: anchor.y + (p.y - anchor.y) * scale,
+    })
+
     render()
   })
+
+  // Walk the held end toward the target in short hops, checking after each one
+  // that no crossing was born or killed anywhere but at a rope end. The first
+  // hop that would push one rope through another stops the whole move, so the
+  // rope catches and hangs there instead of tearing free.
+  function hopEndTo(rope: Rope, head: number, target: Pt): void {
+    const from = { x: rope.pts[head].x, y: rope.pts[head].y }
+    const span = Math.hypot(target.x - from.x, target.y - from.y)
+    const hops = Math.min(MAX_HOPS, Math.max(1, Math.ceil(span / HOP)))
+
+    for (let s = 1; s <= hops; s += 1) {
+      const undo = rope.pts.map((q) => ({ x: q.x, y: q.y }))
+
+      rope.pts[head] = {
+        x: from.x + (target.x - from.x) * (s / hops),
+        y: from.y + (target.y - from.y) * (s / hops),
+      }
+      relax(rope, RELAX_DRAG)
+
+      if (!legalMove(board, rope)) {
+        rope.pts = undo
+        return
+      }
+
+      commitMove(board, rope)
+    }
+  }
+
+  function restoreGrab(): void {
+    if (!drag) {
+      return
+    }
+
+    drag.rope.pts = drag.wasPts
+    drag.rope.pa = drag.wasPa
+    drag.rope.pb = drag.wasPb
+    board.crossings = drag.wasCrossings
+  }
 
   function endDrag(event: PointerEvent): void {
     if (!drag || event.pointerId !== drag.pointerId) {
@@ -852,27 +1004,42 @@ export function setupTwistedRopes(container: HTMLElement): void {
 
     const rope = drag.rope
     const head = drag.head
-    const counted = drag.moved
-    const landing = counted ? dropTarget(board, rope, head, rope.pts[head]) : null
+    const landing = drag.moved ? dropTarget(board, rope, head, rope.pts[head]) : null
+    let landed = false
 
-    // Land on an empty post and the rope takes that post's height, which is what
-    // re-slopes it. Land anywhere else and the end goes back where it started.
     if (landing) {
-      if (head === 0) {
-        rope.pa = landing
-      } else {
-        rope.pb = landing
+      hopEndTo(rope, head, landing)
+
+      // The end only truly arrives if no rope blocked the last stretch.
+      if (Math.hypot(rope.pts[head].x - landing.x, rope.pts[head].y - landing.y) < 0.5) {
+        const undo = rope.pts.map((q) => ({ x: q.x, y: q.y }))
+
+        relax(rope, RELAX_SETTLE)
+
+        if (legalMove(board, rope)) {
+          commitMove(board, rope)
+        } else {
+          rope.pts = undo
+        }
+
+        if (head === 0) {
+          rope.pa = landing
+        } else {
+          rope.pb = landing
+        }
+
+        landed = true
       }
     }
 
-    const post = head === 0 ? rope.pa : rope.pb
+    // No reachable post, or a rope in the way. Put it back the way you found it.
+    if (!landed) {
+      restoreGrab()
+    }
 
-    rope.pts[head] = { x: post.x, y: post.y }
-    relax(rope, RELAX_SETTLE)
     drag = null
 
-    // A tap on a post that never moved is not a move.
-    if (counted) {
+    if (landed) {
       moves += 1
 
       if (autoLift) {
