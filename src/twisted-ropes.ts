@@ -399,6 +399,7 @@ export function setupTwistedRopes(container: HTMLElement): void {
       <div class="ropes-toolbar">
         <button id="ropes-test" type="button">Test board</button>
         <button id="ropes-new" type="button">Random board</button>
+        <button id="ropes-lift" type="button">Auto-lift: off</button>
         <div class="ropes-count" role="group" aria-label="Rope count">
           <button id="ropes-fewer" type="button" aria-label="Fewer ropes">&minus;</button>
           <span id="ropes-count-label">Size: 5</span>
@@ -416,6 +417,7 @@ export function setupTwistedRopes(container: HTMLElement): void {
   const countLabel = container.querySelector<HTMLSpanElement>('#ropes-count-label')
   const newButton = container.querySelector<HTMLButtonElement>('#ropes-new')
   const testButton = container.querySelector<HTMLButtonElement>('#ropes-test')
+  const liftButton = container.querySelector<HTMLButtonElement>('#ropes-lift')
   const fewerButton = container.querySelector<HTMLButtonElement>('#ropes-fewer')
   const moreButton = container.querySelector<HTMLButtonElement>('#ropes-more')
 
@@ -425,6 +427,7 @@ export function setupTwistedRopes(container: HTMLElement): void {
     !countLabel ||
     !newButton ||
     !testButton ||
+    !liftButton ||
     !fewerButton ||
     !moreButton
   ) {
@@ -441,7 +444,11 @@ export function setupTwistedRopes(container: HTMLElement): void {
   const ctx = context
   const status = statusEl
   const label = countLabel
+  const liftLabel = liftButton
 
+  // Off while we tune the mechanic. A free rope glows and stays put instead of
+  // leaving, so the board does not evaporate under you.
+  let autoLift = false
   let count = 5
   let board: Board = { posts: [], ropes: [], grid: 0 }
   let moves = 0
@@ -556,6 +563,22 @@ export function setupTwistedRopes(container: HTMLElement): void {
     ctx.stroke()
   }
 
+  // A rope that satisfies the lift rule gets a pale glow. With auto-lift off it
+  // stays on the board wearing the glow, so you can see the rule fire without
+  // the rope vanishing before you have read the reason.
+  function drawHalo(rope: Rope): void {
+    ctx.strokeStyle = 'rgba(255, 224, 138, 0.3)'
+    ctx.lineWidth = 20
+    ctx.beginPath()
+    ctx.moveTo(rope.pts[0].x, rope.pts[0].y)
+
+    for (let i = 1; i < rope.pts.length; i += 1) {
+      ctx.lineTo(rope.pts[i].x, rope.pts[i].y)
+    }
+
+    ctx.stroke()
+  }
+
   // Row and column numbers along the top and left edges, so you can name a hole
   // when you tell me what the board did.
   function drawGridLabels(grid: number): void {
@@ -610,6 +633,13 @@ export function setupTwistedRopes(container: HTMLElement): void {
     }
 
     const crossings = crossingsOf(ropes)
+    const free = crossings.map((list) => list.every((cross) => cross.over))
+
+    ropes.forEach((rope, i) => {
+      if (free[i]) {
+        drawHalo(rope)
+      }
+    })
 
     ropes.forEach((rope, i) => {
       drawRope(rope, crossings[i])
@@ -623,13 +653,18 @@ export function setupTwistedRopes(container: HTMLElement): void {
       drawPost(rope, rope.pb, heldB)
     }
 
+    const freeCount = free.filter(Boolean).length
+
     if (solved) {
       status.textContent = `Solved in ${moves} ${moves === 1 ? 'move' : 'moves'}`
     } else {
-      status.textContent = `Ropes left: ${ropes.length} · Moves: ${moves}`
+      status.textContent =
+        `Ropes: ${ropes.length} · Free: ${freeCount} · Moves: ${moves}` +
+        (autoLift ? '' : ' · holding')
     }
 
     label.textContent = `Size: ${count}`
+    liftLabel.textContent = autoLift ? 'Auto-lift: on' : 'Auto-lift: off'
   }
 
   function start(next: Board): void {
@@ -735,8 +770,11 @@ export function setupTwistedRopes(container: HTMLElement): void {
     // A tap on a post that never moved is not a move.
     if (counted) {
       moves += 1
-      liftFree(board.ropes)
-      solved = board.ropes.length === 0
+
+      if (autoLift) {
+        liftFree(board.ropes)
+        solved = board.ropes.length === 0
+      }
     }
 
     render()
@@ -747,6 +785,17 @@ export function setupTwistedRopes(container: HTMLElement): void {
 
   testButton.addEventListener('click', () => {
     start(buildTestBoard())
+  })
+
+  liftButton.addEventListener('click', () => {
+    autoLift = !autoLift
+
+    if (autoLift) {
+      liftFree(board.ropes)
+      solved = board.ropes.length === 0
+    }
+
+    render()
   })
 
   newButton.addEventListener('click', () => {
