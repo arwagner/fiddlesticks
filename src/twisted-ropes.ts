@@ -69,14 +69,17 @@ type Board = { posts: Post[]; ropes: Rope[]; grid: number; crossings: Crossing[]
 // same crossing. Generous, because a fast drag moves one a long way per frame.
 const MATCH_DIST = 90
 
-// How close to a rope's tip a crossing must be to count as having slid off the
-// end, in node indices. A rope has LAST segments, so this is a few of them.
-const END_ZONE = 2.5
+// How many nodes back from the held end count as lifted into the air, and so
+// may sweep across another rope. Bigger means you can re-route more of the rope
+// in one drag. Smaller means you must work the rope free a little at a time.
+const LIFT_NODES = 8
 
-// The drag advances the held end in short hops so the rope can catch on another
-// rope part way. Each hop is checked, and the first illegal one stops the move.
+// The drag advances the held end in short hops. Each hop relaxes the rope and
+// then resolves it against the others, so nothing tunnels through.
 const HOP = 4
 const MAX_HOPS = 48
+const SOLVE_PASSES = 3
+const TIGHTEN = 0.25
 
 let nextRopeId = 1
 
@@ -242,37 +245,50 @@ function ancestorOf(previous: Found[], claimed: Set<number>, found: Found): numb
   return bestAt
 }
 
-// A crossing may only be born or die where a rope END sweeps past another rope.
-// One that appears or vanishes in the middle of both ropes means the two ropes
-// went through each other, and rope cannot do that.
-function atEnd(f: number): boolean {
-  return f <= END_ZONE || f >= LAST - END_ZONE
+// The stretch of rope near the end you are holding is off the board, in the air.
+// It is the only part that may sweep across another rope, and that is how every
+// crossing is made and unmade.
+function lifted(head: number, i: number): boolean {
+  return head === 0 ? i <= LIFT_NODES : i >= LAST - LIFT_NODES
 }
 
-function legalMove(board: Board, moved: Rope): boolean {
-  const before = board.crossings.filter((c) => c.aId === moved.id || c.bId === moved.id)
-  const claimed = new Set<number>()
-
-  for (const found of geometricCrossings(board.ropes, moved)) {
-    const at = ancestorOf(before, claimed, found)
-
-    if (at >= 0) {
-      claimed.add(at)
+// Real rope cannot pass through real rope. Any node still lying on the board is
+// stopped just short of where it would have crossed another rope. This replaces
+// an earlier check that refused the whole move instead of resolving it, which
+// made ropes catch on each other when they should have slid around.
+function collideWithOthers(board: Board, rope: Rope, was: Pt[], head: number): void {
+  for (let i = 0; i <= LAST; i += 1) {
+    if (lifted(head, i)) {
       continue
     }
 
-    if (!atEnd(found.fa) && !atEnd(found.fb)) {
-      return false
+    const from = was[i]
+    const to = rope.pts[i]
+    let earliest = 1
+
+    for (const other of board.ropes) {
+      if (other === rope) {
+        continue
+      }
+
+      for (let j = 0; j < LAST; j += 1) {
+        const hit = segCross(from, to, other.pts[j], other.pts[j + 1])
+
+        if (hit && hit.t < earliest) {
+          earliest = hit.t
+        }
+      }
+    }
+
+    if (earliest < 1) {
+      const stop = earliest * 0.85
+
+      rope.pts[i] = {
+        x: from.x + (to.x - from.x) * stop,
+        y: from.y + (to.y - from.y) * stop,
+      }
     }
   }
-
-  for (let k = 0; k < before.length; k += 1) {
-    if (!claimed.has(k) && !atEnd(before[k].fa) && !atEnd(before[k].fb)) {
-      return false
-    }
-  }
-
-  return true
 }
 
 // Accept a move that legalMove has already approved. Only the pairs touching the
@@ -369,6 +385,28 @@ function constrain(pts: Pt[], i: number, j: number, seg: number): void {
   pi.y += dy * k * wi
   pj.x -= dx * k * wj
   pj.y -= dy * k * wj
+}
+
+// Rope under tension takes the shortest path it can, so slack works its way out
+// and a loop hanging over another rope slides off rather than sitting there. Each
+// interior node eases toward the midpoint of its neighbors. The length constraint
+// in relax puts the length straight back, so the rope shortens its PATH, not
+// itself. Without this a dragged rope just leaves lazy loops wherever it was
+// last, and the player cannot pull anything free.
+function tighten(rope: Rope, amount: number): void {
+  const pts = rope.pts
+  const eased: Pt[] = []
+
+  for (let i = 1; i < LAST; i += 1) {
+    eased.push({
+      x: pts[i].x + ((pts[i - 1].x + pts[i + 1].x) / 2 - pts[i].x) * amount,
+      y: pts[i].y + ((pts[i - 1].y + pts[i + 1].y) / 2 - pts[i].y) * amount,
+    })
+  }
+
+  for (let i = 1; i < LAST; i += 1) {
+    pts[i] = eased[i - 1]
+  }
 }
 
 function relax(rope: Rope, iters: number): void {
@@ -959,27 +997,27 @@ export function setupTwistedRopes(container: HTMLElement): void {
     render()
   })
 
-  // Walk the held end toward the target in short hops, checking after each one
-  // that no crossing was born or killed anywhere but at a rope end. The first
-  // hop that would push one rope through another stops the whole move, so the
-  // rope catches and hangs there instead of tearing free.
+  // Walk the held end toward the target in short hops. The end always goes where
+  // you put it. After each hop the rope is relaxed back to its own length and
+  // then pushed out of the other ropes, so the body drapes around them instead
+  // of cutting through. Only the lifted stretch near your hand may cross.
   function hopEndTo(rope: Rope, head: number, target: Pt): void {
     const from = { x: rope.pts[head].x, y: rope.pts[head].y }
     const span = Math.hypot(target.x - from.x, target.y - from.y)
     const hops = Math.min(MAX_HOPS, Math.max(1, Math.ceil(span / HOP)))
 
     for (let s = 1; s <= hops; s += 1) {
-      const undo = rope.pts.map((q) => ({ x: q.x, y: q.y }))
+      const was = rope.pts.map((q) => ({ x: q.x, y: q.y }))
 
       rope.pts[head] = {
         x: from.x + (target.x - from.x) * (s / hops),
         y: from.y + (target.y - from.y) * (s / hops),
       }
-      relax(rope, RELAX_DRAG)
 
-      if (!legalMove(board, rope)) {
-        rope.pts = undo
-        return
+      for (let pass = 0; pass < SOLVE_PASSES; pass += 1) {
+        tighten(rope, TIGHTEN)
+        relax(rope, RELAX_DRAG)
+        collideWithOthers(board, rope, was, head)
       }
 
       commitMove(board, rope)
@@ -1010,29 +1048,26 @@ export function setupTwistedRopes(container: HTMLElement): void {
     if (landing) {
       hopEndTo(rope, head, landing)
 
-      // The end only truly arrives if no rope blocked the last stretch.
-      if (Math.hypot(rope.pts[head].x - landing.x, rope.pts[head].y - landing.y) < 0.5) {
-        const undo = rope.pts.map((q) => ({ x: q.x, y: q.y }))
+      const was = rope.pts.map((q) => ({ x: q.x, y: q.y }))
 
+      for (let pass = 0; pass < SOLVE_PASSES; pass += 1) {
+        tighten(rope, TIGHTEN)
         relax(rope, RELAX_SETTLE)
-
-        if (legalMove(board, rope)) {
-          commitMove(board, rope)
-        } else {
-          rope.pts = undo
-        }
-
-        if (head === 0) {
-          rope.pa = landing
-        } else {
-          rope.pb = landing
-        }
-
-        landed = true
+        collideWithOthers(board, rope, was, head)
       }
+
+      commitMove(board, rope)
+
+      if (head === 0) {
+        rope.pa = landing
+      } else {
+        rope.pb = landing
+      }
+
+      landed = true
     }
 
-    // No reachable post, or a rope in the way. Put it back the way you found it.
+    // Released with no post in reach. Put it back the way you found it.
     if (!landed) {
       restoreGrab()
     }
