@@ -309,6 +309,12 @@ h1 {
   gap: 0.3rem;
 }
 
+.nono-tip {
+  color: var(--text-soft);
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+
 .nono-mode button.active {
   border-color: var(--focus);
   background: var(--surface-strong);

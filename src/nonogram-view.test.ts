@@ -94,6 +94,42 @@ test('a click on a decided cell leaves the board alone, so the win sweep does no
   expect(cell(el, 0, 0)).toBe(filled) // the same element, so render() did not rebuild the grid
 })
 
+function rightClick(target: HTMLElement): MouseEvent {
+  const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
+  target.dispatchEvent(event)
+  return event
+}
+
+test('a right-click marks an X and blocks the browser menu', () => {
+  const el = mount()
+
+  const event = rightClick(cell(el, 0, 1)) // solution[0][1] = empty → a correct X
+
+  expect(cell(el, 0, 1).classList.contains('nono-x')).toBe(true)
+  expect(event.defaultPrevented).toBe(true)
+  expect(status(el)).toBe('Mistakes: 0')
+})
+
+test('a right-click marks an X while Fill mode stays selected', () => {
+  const el = mount()
+  const [fillBtn] = el.querySelectorAll<HTMLButtonElement>('.nono-mode button')
+
+  rightClick(cell(el, 0, 1))
+
+  expect(fillBtn.classList.contains('active')).toBe(true) // the mode did not change
+  cell(el, 0, 0).click() // a left-click still fills, as Fill mode is still on
+  expect(cell(el, 0, 0).classList.contains('nono-filled')).toBe(true)
+})
+
+test('a right-click on a solution-filled cell counts a mistake', () => {
+  const el = mount()
+
+  rightClick(cell(el, 0, 0)) // solution[0][0] = filled → a wrong X
+
+  expect(cell(el, 0, 0).classList.contains('nono-wrong-filled')).toBe(true)
+  expect(status(el)).toBe('Mistakes: 1')
+})
+
 test('feat-004/AC-8: New puzzle resets the board and the mistake count', () => {
   const el = mount()
   cell(el, 0, 1).click() // a mistake

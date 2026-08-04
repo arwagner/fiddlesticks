@@ -13,6 +13,7 @@ export function setupNonogram(
           <button type="button" data-mode="fill" class="active">Fill</button>
           <button type="button" data-mode="x">Mark X</button>
         </div>
+        <span class="nono-tip">Right-click marks an X</span>
         <p id="nono-status" aria-live="polite">Mistakes: 0</p>
       </div>
       <div id="nono-grid" class="nono-grid"></div>
@@ -60,14 +61,14 @@ export function setupNonogram(
     status.textContent = state.won ? `Solved! Mistakes: ${state.mistakes}` : `Mistakes: ${state.mistakes}`
   }
 
-  grid.addEventListener('click', (event) => {
+  function markAt(event: Event, intent: 'fill' | 'x'): void {
     const cell = (event.target as HTMLElement).closest<HTMLButtonElement>('.nono-cell')
 
     if (!cell) {
       return
     }
 
-    const next = applyMark(state, Number(cell.dataset.r), Number(cell.dataset.c), mode)
+    const next = applyMark(state, Number(cell.dataset.r), Number(cell.dataset.c), intent)
 
     // applyMark returns the same state when it ignores a click. Skip the redraw, or the win sweep replays.
     if (next === state) {
@@ -76,6 +77,14 @@ export function setupNonogram(
 
     state = next
     render()
+  }
+
+  grid.addEventListener('click', (event) => markAt(event, mode))
+
+  // A right-click always marks an X, whatever the mode buttons say. The mode itself does not change.
+  grid.addEventListener('contextmenu', (event) => {
+    event.preventDefault() // no browser menu over the board, even between the cells
+    markAt(event, 'x')
   })
 
   modeButtons.forEach((button) => {
