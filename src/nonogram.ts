@@ -2,7 +2,7 @@ import { newGame, applyMark, type GameState } from './nonogram-logic'
 
 export function setupNonogram(
   container: HTMLElement,
-  size = 5,
+  size = 8,
   createGame: (size: number) => GameState = newGame,
 ): void {
   container.innerHTML = `
