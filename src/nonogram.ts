@@ -1,4 +1,4 @@
-import { newGame, applyMark, type GameState } from './nonogram-logic'
+import { newGame, applyMark, findHints, type GameState, type Hint } from './nonogram-logic'
 
 // The board sizes the player can pick. Even 20×20 generates in about 15ms, so every one of these is cheap.
 export const SIZES = [5, 8, 10, 15, 20]
@@ -27,6 +27,7 @@ export function setupNonogram(
     <div class="nonogram">
       <div class="nono-toolbar">
         <button id="nono-new" type="button">New puzzle</button>
+        <button id="nono-hint" type="button">Hint</button>
         <label class="nono-size">Size
           <select id="nono-size">${options}</select>
         </label>
@@ -37,6 +38,7 @@ export function setupNonogram(
         <span class="nono-tip">Right-click marks an X</span>
         <p id="nono-status" aria-live="polite">Mistakes: 0</p>
       </div>
+      <p id="nono-hint-note" class="nono-hint-note" aria-live="polite"></p>
       <div id="nono-grid" class="nono-grid"></div>
     </div>
   `
@@ -44,18 +46,23 @@ export function setupNonogram(
   const gridEl = container.querySelector<HTMLDivElement>('#nono-grid')
   const statusEl = container.querySelector<HTMLParagraphElement>('#nono-status')
   const newButton = container.querySelector<HTMLButtonElement>('#nono-new')
+  const hintButtonEl = container.querySelector<HTMLButtonElement>('#nono-hint')
+  const hintNoteEl = container.querySelector<HTMLParagraphElement>('#nono-hint-note')
   const sizeSelect = container.querySelector<HTMLSelectElement>('#nono-size')
   const modeButtons = Array.from(container.querySelectorAll<HTMLButtonElement>('.nono-mode button'))
 
-  if (!gridEl || !statusEl || !newButton || !sizeSelect) {
+  if (!gridEl || !statusEl || !newButton || !hintButtonEl || !hintNoteEl || !sizeSelect) {
     throw new Error('Nonogram UI elements are missing')
   }
 
   const grid = gridEl
   const status = statusEl
+  const hintNote = hintNoteEl
+  const hintButton = hintButtonEl
 
   let state: GameState = createGame(size)
   let mode: 'fill' | 'x' = 'fill'
+  let hint: Hint | null = null
 
   function render(): void {
     grid.style.setProperty('--n', String(state.size))
@@ -75,7 +82,8 @@ export function setupNonogram(
         const glyph = cell === 'x' || cell === 'wrong-x' ? '✕' : ''
         // The win sweep runs on a diagonal, so each cell waits for the one up and to the left of it.
         const delay = `--nono-delay:${Math.round((r + c) * step)}ms`
-        html += `<button type="button" style="${delay}" class="nono-cell nono-${cell}" data-r="${r}" data-c="${c}" aria-label="row ${r + 1} column ${c + 1}">${glyph}</button>`
+        const marked = hint && hint.r === r && hint.c === c ? ' nono-hint' : ''
+        html += `<button type="button" style="${delay}" class="nono-cell nono-${cell}${marked}" data-r="${r}" data-c="${c}" aria-label="row ${r + 1} column ${c + 1}">${glyph}</button>`
       }
     }
     grid.innerHTML = html
@@ -85,6 +93,10 @@ export function setupNonogram(
     status.classList.toggle('nono-status-won', state.won)
 
     status.textContent = state.won ? `Solved! Mistakes: ${state.mistakes}` : `Mistakes: ${state.mistakes}`
+
+    // The note names the line that proves the cell. It never says which mark to make.
+    hintNote.textContent = hint ? `Look at ${hint.line} ${hint.index + 1}. It decides the marked cell.` : ''
+    hintButton.disabled = state.won
   }
 
   function markAt(event: Event, intent: 'fill' | 'x'): void {
@@ -102,6 +114,7 @@ export function setupNonogram(
     }
 
     state = next
+    hint = null // the board moved on, so the old hint no longer applies
     render()
   }
 
@@ -113,6 +126,14 @@ export function setupNonogram(
     markAt(event, 'x')
   })
 
+  // Pick at random, so pressing Hint again points somewhere else instead of repeating itself.
+  hintButton.addEventListener('click', () => {
+    const hints = findHints(state)
+
+    hint = hints.length > 0 ? hints[Math.floor(Math.random() * hints.length)] : null
+    render()
+  })
+
   modeButtons.forEach((button) => {
     button.addEventListener('click', () => {
       mode = button.dataset.mode === 'x' ? 'x' : 'fill'
@@ -122,12 +143,14 @@ export function setupNonogram(
 
   newButton.addEventListener('click', () => {
     state = createGame(state.size)
+    hint = null
     render()
   })
 
   // A new size means a new puzzle. There is no way to keep the current board.
   sizeSelect.addEventListener('change', () => {
     state = createGame(Number(sizeSelect.value))
+    hint = null
     render()
   })
 

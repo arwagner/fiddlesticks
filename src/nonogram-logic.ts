@@ -1,6 +1,6 @@
 // Pure, size-parameterized nonogram rules for feat-004 (no DOM) — unit-testable. nonogram.ts renders it.
 
-import { isLineSolvable } from './nonogram-solver'
+import { deduceLine, isLineSolvable, type Known } from './nonogram-solver'
 
 // 'wrong-filled' / 'wrong-x' hold the CORRECT value for a cell the player marked wrong — rendered red.
 export type Cell = 'blank' | 'filled' | 'x' | 'wrong-filled' | 'wrong-x'
@@ -125,6 +125,61 @@ export function newGame(size: number): GameState {
 
 function cloneBoard(board: Cell[][]): Cell[][] {
   return board.map((row) => [...row])
+}
+
+// A cell the player can work out right now, and the line that proves it.
+export type Hint = {
+  r: number
+  c: number
+  line: 'row' | 'column'
+  index: number // the row or column number, counted from 0
+}
+
+// What the player knows, read off the board. Every decided cell is correct, because a wrong mark reveals
+// the true value.
+function knownFromBoard(board: Cell[][]): Known[][] {
+  return board.map((row) => row.map((cell) => (cell === 'blank' ? null : isFilledValue(cell))))
+}
+
+// Every blank cell that ONE line's clue decides, given the marks already on the board. A hint from a single
+// line is a hint the player can check by eye. The solver's full fixpoint would also find cells that need
+// several rounds of reasoning, which does not teach anything.
+//
+// While the board is unfinished this never comes back empty. newGame only deals puzzles that line logic can
+// finish from an empty board, and the player's marks only add correct information, so some line always has
+// more to give.
+export function findHints(state: GameState): Hint[] {
+  if (state.won) {
+    return []
+  }
+
+  const known = knownFromBoard(state.board)
+  const hints: Hint[] = []
+
+  for (let r = 0; r < state.size; r += 1) {
+    const next = deduceLine(state.rowClues[r], known[r])
+
+    for (let c = 0; next && c < state.size; c += 1) {
+      if (known[r][c] === null && next[c] !== null) {
+        hints.push({ r, c, line: 'row', index: r })
+      }
+    }
+  }
+
+  for (let c = 0; c < state.size; c += 1) {
+    const next = deduceLine(
+      state.colClues[c],
+      known.map((row) => row[c]),
+    )
+
+    for (let r = 0; next && r < state.size; r += 1) {
+      if (known[r][c] === null && next[r] !== null) {
+        hints.push({ r, c, line: 'column', index: c })
+      }
+    }
+  }
+
+  return hints
 }
 
 // feat-004/AC-5: if every solution-filled cell in a line is now filled, mark its remaining blanks X.

@@ -19,6 +19,24 @@ const X_GRID: boolean[][] = [
 ]
 const makeFixed = () => newGameFromSolution(X_GRID)
 
+// X_GRID needs a guess to start: no single line decides anything on an empty board, so it yields no hints.
+// This grid opens with a full row, which one clue settles at once.
+const HINT_GRID: boolean[][] = [
+  [T, T, T, T, T],
+  [T, T, F, T, T],
+  [T, F, F, F, T],
+  [T, T, F, T, T],
+  [T, T, T, T, T],
+]
+const makeHintable = () => newGameFromSolution(HINT_GRID)
+
+function mountHintable() {
+  const el = document.createElement('div')
+  document.body.appendChild(el)
+  setupNonogram(el, 5, makeHintable)
+  return el
+}
+
 function mount() {
   const el = document.createElement('div')
   document.body.appendChild(el)
@@ -92,6 +110,44 @@ test('a click on a decided cell leaves the board alone, so the win sweep does no
   filled.click() // the cell is decided, so this click changes nothing
 
   expect(cell(el, 0, 0)).toBe(filled) // the same element, so render() did not rebuild the grid
+})
+
+test('Hint rings one blank cell and names the line that decides it', () => {
+  const el = mountHintable()
+
+  expect(el.querySelectorAll('.nono-hint').length).toBe(0)
+
+  el.querySelector<HTMLButtonElement>('#nono-hint')!.click()
+
+  const ringed = el.querySelectorAll<HTMLButtonElement>('.nono-hint')
+
+  expect(ringed.length).toBe(1)
+  expect(ringed[0].classList.contains('nono-blank')).toBe(true) // still the player's call to make
+  expect(el.querySelector('#nono-hint-note')!.textContent).toMatch(/^Look at (row|column) \d+\./)
+})
+
+test('marking a cell clears the hint', () => {
+  const el = mountHintable()
+  el.querySelector<HTMLButtonElement>('#nono-hint')!.click()
+  const ringed = el.querySelector<HTMLButtonElement>('.nono-hint')!
+  const r = Number(ringed.dataset.r)
+  const c = Number(ringed.dataset.c)
+
+  cell(el, r, c).click()
+
+  expect(el.querySelectorAll('.nono-hint').length).toBe(0)
+  expect(el.querySelector('#nono-hint-note')!.textContent).toBe('')
+})
+
+test('Hint turns off once the puzzle is solved', () => {
+  const el = mount()
+  const hintButton = el.querySelector<HTMLButtonElement>('#nono-hint')!
+
+  expect(hintButton.disabled).toBe(false)
+
+  X_GRID.forEach((row, r) => row.forEach((filled, c) => filled && cell(el, r, c).click()))
+
+  expect(hintButton.disabled).toBe(true)
 })
 
 test('the size menu offers every size and starts on the one the caller asked for', () => {

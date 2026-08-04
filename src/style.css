@@ -424,6 +424,31 @@ h1 {
   background: var(--surface);
 }
 
+.nono-hint-note {
+  margin: 0 0 0.7rem;
+  min-height: 1.2em;
+  color: #ffd264;
+  font-size: 0.9rem;
+}
+
+/* The hint ring marks the cell. It never shows which mark the cell takes. */
+.nono-hint {
+  outline: 2px solid #ffd264;
+  outline-offset: 1px;
+  z-index: 1;
+  animation: nono-hint-pulse 1.3s ease-in-out infinite;
+}
+
+@keyframes nono-hint-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 210, 100, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(255, 210, 100, 0);
+  }
+}
+
 /* The win sweep. A green tile grows over every cell, one diagonal at a time, and covers the X marks. */
 .nono-won .nono-cell {
   cursor: default;
@@ -471,6 +496,11 @@ h1 {
   .nono-won {
     animation-duration: 0.01ms;
     animation-delay: 0ms;
+  }
+
+  /* The outline alone still marks the cell, so drop the pulse. */
+  .nono-hint {
+    animation: none;
   }
 }
 

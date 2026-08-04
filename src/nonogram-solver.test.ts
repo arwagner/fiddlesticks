@@ -1,8 +1,19 @@
 import { describe, expect, test } from 'vitest'
-import { deduceLine, isLineSolvable, lineArrangements, solveByLines } from './nonogram-solver'
-import { colClues, generateSolvableSolution, rowClues } from './nonogram-logic'
+import { deduceLine, isLineSolvable, lineArrangements, solveByLines, type Known } from './nonogram-solver'
+import {
+  applyMark,
+  colClues,
+  findHints,
+  generateSolvableSolution,
+  newGame,
+  rowClues,
+  type Cell,
+} from './nonogram-logic'
 
 const b = (pattern: string): boolean[] => [...pattern].map((char) => char === '#')
+
+const toKnown = (cell: Cell): Known =>
+  cell === 'blank' ? null : cell === 'filled' || cell === 'wrong-filled'
 
 describe('lineArrangements', () => {
   test('a run that fills the line has one placement', () => {
@@ -71,6 +82,52 @@ describe('solveByLines', () => {
     const result = solveByLines(rowClues(solution), colClues(solution))
 
     expect(result.grid[1]).toEqual([true, false, true])
+  })
+})
+
+describe('findHints', () => {
+  test('every hint names a blank cell that its own line decides', () => {
+    let state = newGame(8)
+
+    // Play a few correct marks, so the hints must account for the board and not just the clues.
+    state = applyMark(state, 0, 0, state.solution[0][0] ? 'fill' : 'x')
+    state = applyMark(state, 3, 4, state.solution[3][4] ? 'fill' : 'x')
+
+    const hints = findHints(state)
+
+    expect(hints.length).toBeGreaterThan(0)
+
+    for (const hint of hints) {
+      expect(state.board[hint.r][hint.c]).toBe('blank')
+
+      const known: Known[] =
+        hint.line === 'row'
+          ? state.board[hint.r].map(toKnown)
+          : state.board.map((row) => toKnown(row[hint.c]))
+      const clue = hint.line === 'row' ? state.rowClues[hint.r] : state.colClues[hint.index]
+      const at = hint.line === 'row' ? hint.c : hint.r
+
+      expect(deduceLine(clue, known)![at]).toBe(state.solution[hint.r][hint.c])
+    }
+  })
+
+  test('a hint stays available at every step until the puzzle is solved', () => {
+    let state = newGame(8)
+
+    // Follow the hints alone. If they ever run dry early, this loop cannot finish the board.
+    for (let step = 0; !state.won; step += 1) {
+      expect(step).toBeLessThan(state.size * state.size) // no infinite loop
+
+      const hints = findHints(state)
+
+      expect(hints.length).toBeGreaterThan(0)
+
+      const { r, c } = hints[0]
+      state = applyMark(state, r, c, state.solution[r][c] ? 'fill' : 'x')
+    }
+
+    expect(state.mistakes).toBe(0)
+    expect(findHints(state)).toEqual([])
   })
 })
 
