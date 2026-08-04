@@ -282,3 +282,101 @@ h1 {
     align-items: flex-start;
   }
 }
+
+.nonogram {
+  margin-top: 1rem;
+}
+
+.nono-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.nono-toolbar button {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.22);
+  color: var(--text);
+  padding: 0.45rem 0.7rem;
+  cursor: pointer;
+}
+
+.nono-mode {
+  display: inline-flex;
+  gap: 0.3rem;
+}
+
+.nono-mode button.active {
+  border-color: var(--focus);
+  background: var(--surface-strong);
+}
+
+#nono-status {
+  font-size: 0.95rem;
+  margin-left: auto;
+}
+
+.nono-grid {
+  display: grid;
+  grid-template-columns: auto repeat(var(--n), minmax(30px, 46px));
+  gap: 3px;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.nono-clue {
+  color: var(--text-soft);
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.05;
+}
+
+.nono-clue-col {
+  flex-direction: column;
+  justify-content: flex-end;
+  padding-bottom: 0.2rem;
+}
+
+.nono-clue-row {
+  justify-content: flex-end;
+  gap: 0.25rem;
+  padding-right: 0.35rem;
+}
+
+.nono-cell {
+  aspect-ratio: 1;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--surface-strong);
+  color: var(--text-soft);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0;
+  touch-action: manipulation;
+}
+
+.nono-filled {
+  background: #6dd4b8;
+  border-color: #6dd4b8;
+}
+
+.nono-x {
+  background: var(--surface);
+}
+
+/* wrong marks: the correct value, flagged red */
+.nono-wrong-filled {
+  background: #cf3d48;
+  border-color: #cf3d48;
+}
+
+.nono-wrong-x {
+  background: var(--surface);
+  color: #cf3d48;
+}

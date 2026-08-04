@@ -1,6 +1,7 @@
 import './style.css'
 import { games } from './games'
 import { setupSolitaire } from './solitaire'
+import { setupNonogram } from './nonogram'
 
 const app = document.querySelector<HTMLDivElement>('#app')
 
@@ -20,6 +21,7 @@ const params = new URLSearchParams(window.location.search)
 const gameKey = params.get('game') ?? ''
 const game = gameMap.get(gameKey)
 const solitaireSlug = slugify('Canvas Solitaire')
+const nonogramSlug = slugify('Nonogram')
 
 if (!game) {
   app.innerHTML = `
@@ -43,7 +45,9 @@ if (!game) {
         ${
           gameKey === solitaireSlug
             ? '<div id="solitaire-root" class="solitaire-root"></div>'
-            : '<p class="hint">Game screen placeholder: connect your real game here.</p>'
+            : gameKey === nonogramSlug
+              ? '<div id="nonogram-root"></div>'
+              : '<p class="hint">Game screen placeholder: connect your real game here.</p>'
         }
       </article>
     </main>
@@ -57,5 +61,13 @@ if (!game) {
     }
 
     setupSolitaire(solitaireRoot)
+  } else if (gameKey === nonogramSlug) {
+    const nonogramRoot = document.querySelector<HTMLDivElement>('#nonogram-root')
+
+    if (!nonogramRoot) {
+      throw new Error('Nonogram root not found')
+    }
+
+    setupNonogram(nonogramRoot)
   }
 }
