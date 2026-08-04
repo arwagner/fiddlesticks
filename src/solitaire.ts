@@ -6,6 +6,7 @@ import {
   suits,
   rankLabels,
   suitLabels,
+  INDEX_BASELINE,
   cardColor,
   canPlaceOnFoundation,
   canPlaceOnTableau,
@@ -165,8 +166,8 @@ export function setupSolitaire(container: HTMLElement): void {
 
     if (label) {
       ctx.fillStyle = 'rgba(196, 246, 232, 0.7)'
-      ctx.font = `600 ${Math.max(9, 13 * layout.scale)}px ${CARD_FONT}`
-      ctx.fillText(label, x + layout.cardW * 0.1, y + layout.cardH * 0.3)
+      ctx.font = `600 ${Math.max(18, 26 * layout.scale)}px ${CARD_FONT}`
+      ctx.fillText(label, x + layout.cardW * 0.1, y + layout.cardH * 0.35)
     }
 
     ctx.restore()
@@ -208,12 +209,16 @@ export function setupSolitaire(container: HTMLElement): void {
       const label = `${rankLabels[card.rank - 1]}${suitLabels[card.suit]}`
 
       ctx.fillStyle = color
-      const fontSize = Math.max(10, 20 * layout.scale)
+      const fontSize = Math.max(20, 40 * layout.scale)
       const smallFontSize = fontSize * 0.85
+      // At this size a two-glyph label ("10♥") nearly spans the card, so the corners are padded by a
+      // fixed inset and the lower index is right-aligned by measurement rather than a fraction of the width.
+      const pad = layout.cardW * 0.06
+
       ctx.font = `700 ${fontSize}px ${CARD_FONT}`
-      ctx.fillText(label, x + layout.cardW * 0.1, y + layout.cardH * 0.2)
+      ctx.fillText(label, x + pad, y + layout.cardH * INDEX_BASELINE)
       ctx.font = `700 ${smallFontSize}px ${CARD_FONT}`
-      ctx.fillText(label, x + layout.cardW * 0.6, y + layout.cardH * 0.95)
+      ctx.fillText(label, x + layout.cardW - pad - ctx.measureText(label).width, y + layout.cardH * 0.94)
     }
 
     ctx.restore()

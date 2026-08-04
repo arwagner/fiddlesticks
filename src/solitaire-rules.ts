@@ -22,7 +22,12 @@ export const GAP_X = 18
 export const GAP_TOP = 24
 export const TABLEAU_Y = 172
 export const FACEDOWN_SHIFT = 12
-export const FACEUP_SHIFT = 28
+// Fraction of the card height at which the rank+pip index sits (its text baseline). solitaire.ts draws
+// against this and the fan below is derived from it.
+export const INDEX_BASELINE = 0.36
+// A face-up card in a tableau column must leave the card beneath it showing at least down to that
+// index, plus a little air — otherwise the card on top clips the rank you need to read.
+export const FACEUP_SHIFT = Math.round(CARD_H * INDEX_BASELINE) + 3
 
 export function cardColor(card: Card): 'red' | 'black' {
   return card.suit === 'hearts' || card.suit === 'diamonds' ? 'red' : 'black'
