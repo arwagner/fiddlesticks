@@ -20,6 +20,11 @@ const GRAB = 26
 const SNAP = 46
 const GAP = 10
 const POSTS_PER_ROPE = 3
+
+// The fixed test board: a GRID x GRID pegboard, row 1 at the top, column 1 at
+// the left. It exists to make the mechanic inspectable, not to be a good puzzle.
+const GRID = 12
+const MARGIN = 64
 const RELAX_DRAG = 10
 const RELAX_SETTLE = 40
 
@@ -29,7 +34,9 @@ const MAX_ROPES = 8
 type Pt = { x: number; y: number }
 type Post = Pt & { h: number }
 type Rope = { pa: Post; pb: Post; pts: Pt[]; seg: number; hue: number }
-type Board = { posts: Post[]; ropes: Rope[] }
+// `grid` is 0 for a random ring board, or the side length of the pegboard for
+// the fixed test board. Layout, post size, and snap distance all key off it.
+type Board = { posts: Post[]; ropes: Rope[]; grid: number }
 
 // `f` is a fractional node index into a rope's `pts`, so 4.5 is halfway along
 // the fifth segment. Height and arc length are both looked up from it.
@@ -190,11 +197,19 @@ function relax(rope: Rope, iters: number): void {
   }
 }
 
-function makeRope(pa: Post, pb: Post, hue: number): Rope {
+// `bulgeFrac` is how far the rope bows off the straight line, as a fraction of
+// the distance between its posts. It sets the rope's length, and the length is
+// what limits how far a dragged end can reach.
+function makeRope(
+  pa: Post,
+  pb: Post,
+  hue: number,
+  bulgeFrac = (0.16 + Math.random() * 0.3) * (Math.random() < 0.5 ? -1 : 1),
+): Rope {
   const dx = pb.x - pa.x
   const dy = pb.y - pa.y
   const chord = Math.hypot(dx, dy) || 1
-  const bulge = chord * (0.16 + Math.random() * 0.3) * (Math.random() < 0.5 ? -1 : 1)
+  const bulge = chord * bulgeFrac
   const cx = (pa.x + pb.x) / 2 + (-dy / chord) * bulge
   const cy = (pa.y + pb.y) / 2 + (dx / chord) * bulge
   const dense: Pt[] = []
@@ -256,7 +271,56 @@ function buildBoard(count: number): Board {
     ropes.push(makeRope(pa, pb, (j * 360) / count + Math.random() * 18))
   }
 
-  return { posts, ropes }
+  return { posts, ropes, grid: 0 }
+}
+
+function gridPos(row: number, col: number, grid: number): Pt {
+  const step = (BOARD - MARGIN * 2) / (grid - 1)
+
+  return { x: MARGIN + (col - 1) * step, y: MARGIN + (row - 1) * step }
+}
+
+function gridSnap(grid: number): number {
+  return grid ? ((BOARD - MARGIN * 2) / (grid - 1)) * 0.55 : SNAP
+}
+
+// Every hole needs a height, because height is what decides who lies on top.
+// You did not say what the heights should be, so the test board ramps them down
+// the rows: row 1 is 0, row 12 is 1, and the column does not matter. That makes
+// the row label on screen also the height, so you can read the whole board by
+// eye. This is a placeholder. Say the word and it becomes anything else.
+function gridHeight(row: number): number {
+  return (row - 1) / (GRID - 1)
+}
+
+// The fixed board: 12 x 12 holes, a red rope from row 1 column 1 to row 7
+// column 10, and a green rope from row 1 column 2 to row 12 column 2.
+function buildTestBoard(): Board {
+  const rows: Post[][] = []
+  const posts: Post[] = []
+
+  for (let row = 1; row <= GRID; row += 1) {
+    const line: Post[] = []
+
+    for (let col = 1; col <= GRID; col += 1) {
+      const at = gridPos(row, col, GRID)
+      const post: Post = { x: at.x, y: at.y, h: gridHeight(row) }
+
+      line.push(post)
+      posts.push(post)
+    }
+
+    rows.push(line)
+  }
+
+  const hole = (row: number, col: number): Post => rows[row - 1][col - 1]
+
+  const ropes = [
+    makeRope(hole(1, 1), hole(7, 10), 0, 0.32),
+    makeRope(hole(1, 2), hole(12, 2), 135, -0.32),
+  ]
+
+  return { posts, ropes, grid: GRID }
 }
 
 function liftFree(ropes: Rope[]): number {
@@ -278,7 +342,7 @@ function liftFree(ropes: Rope[]): number {
 // Keep rebuilding until the opening board holds most of its ropes. Boards that
 // collapse on sight are the generator's fault, not the player's.
 function freshBoard(count: number): Board {
-  let best: Board = { posts: [], ropes: [] }
+  let best: Board = { posts: [], ropes: [], grid: 0 }
 
   for (let attempt = 0; attempt < 24; attempt += 1) {
     const board = buildBoard(count)
@@ -307,7 +371,7 @@ function dropTarget(board: Board, rope: Rope, head: number, at: Pt): Post | null
   const anchor = head === 0 ? rope.pb : rope.pa
   const reach = rope.seg * LAST * 0.985
   let best: Post | null = null
-  let bestDist = SNAP
+  let bestDist = gridSnap(board.grid)
 
   for (const post of board.posts) {
     if (isTaken(post, board.ropes)) {
@@ -333,7 +397,8 @@ export function setupTwistedRopes(container: HTMLElement): void {
   container.innerHTML = `
     <div class="ropes">
       <div class="ropes-toolbar">
-        <button id="ropes-new" type="button">New board</button>
+        <button id="ropes-test" type="button">Test board</button>
+        <button id="ropes-new" type="button">Random board</button>
         <div class="ropes-count" role="group" aria-label="Rope count">
           <button id="ropes-fewer" type="button" aria-label="Fewer ropes">&minus;</button>
           <span id="ropes-count-label">Size: 5</span>
@@ -350,10 +415,19 @@ export function setupTwistedRopes(container: HTMLElement): void {
   const statusEl = container.querySelector<HTMLParagraphElement>('#ropes-status')
   const countLabel = container.querySelector<HTMLSpanElement>('#ropes-count-label')
   const newButton = container.querySelector<HTMLButtonElement>('#ropes-new')
+  const testButton = container.querySelector<HTMLButtonElement>('#ropes-test')
   const fewerButton = container.querySelector<HTMLButtonElement>('#ropes-fewer')
   const moreButton = container.querySelector<HTMLButtonElement>('#ropes-more')
 
-  if (!canvasEl || !statusEl || !countLabel || !newButton || !fewerButton || !moreButton) {
+  if (
+    !canvasEl ||
+    !statusEl ||
+    !countLabel ||
+    !newButton ||
+    !testButton ||
+    !fewerButton ||
+    !moreButton
+  ) {
     throw new Error('Twisted Ropes UI elements are missing')
   }
 
@@ -369,7 +443,7 @@ export function setupTwistedRopes(container: HTMLElement): void {
   const label = countLabel
 
   let count = 5
-  let board: Board = { posts: [], ropes: [] }
+  let board: Board = { posts: [], ropes: [], grid: 0 }
   let moves = 0
   let solved = false
   let drag: { rope: Rope; head: number; pointerId: number; from: Pt; moved: boolean } | null = null
@@ -446,8 +520,12 @@ export function setupTwistedRopes(container: HTMLElement): void {
     }
   }
 
+  function postRadius(post: Post): number {
+    return (7 + post.h * 6) * (board.grid ? 0.62 : 1)
+  }
+
   function drawPost(rope: Rope, post: Post, held: boolean): void {
-    const r = 7 + post.h * 6
+    const r = postRadius(post)
 
     ctx.beginPath()
     ctx.arc(post.x, post.y, r + 4, 0, Math.PI * 2)
@@ -467,7 +545,7 @@ export function setupTwistedRopes(container: HTMLElement): void {
   // pick a landing spot by eye. While you drag, the posts you can actually reach
   // light up and the rest stay dim.
   function drawEmptyPost(post: Post, reachable: boolean): void {
-    const r = 7 + post.h * 6
+    const r = postRadius(post)
 
     ctx.beginPath()
     ctx.arc(post.x, post.y, r, 0, Math.PI * 2)
@@ -478,14 +556,35 @@ export function setupTwistedRopes(container: HTMLElement): void {
     ctx.stroke()
   }
 
+  // Row and column numbers along the top and left edges, so you can name a hole
+  // when you tell me what the board did.
+  function drawGridLabels(grid: number): void {
+    ctx.fillStyle = 'rgba(154, 235, 213, 0.5)'
+    ctx.font = '11px "Trebuchet MS", sans-serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+
+    for (let i = 1; i <= grid; i += 1) {
+      const top = gridPos(1, i, grid)
+      const left = gridPos(i, 1, grid)
+
+      ctx.fillText(String(i), top.x, MARGIN - 30)
+      ctx.fillText(String(i), MARGIN - 32, left.y)
+    }
+  }
+
   function render(): void {
     ctx.clearRect(0, 0, BOARD, BOARD)
 
-    ctx.beginPath()
-    ctx.arc(CX, CY, RING, 0, Math.PI * 2)
-    ctx.lineWidth = 2
-    ctx.strokeStyle = 'rgba(154, 235, 213, 0.22)'
-    ctx.stroke()
+    if (board.grid) {
+      drawGridLabels(board.grid)
+    } else {
+      ctx.beginPath()
+      ctx.arc(CX, CY, RING, 0, Math.PI * 2)
+      ctx.lineWidth = 2
+      ctx.strokeStyle = 'rgba(154, 235, 213, 0.22)'
+      ctx.stroke()
+    }
 
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
@@ -533,8 +632,8 @@ export function setupTwistedRopes(container: HTMLElement): void {
     label.textContent = `Size: ${count}`
   }
 
-  function reset(): void {
-    board = freshBoard(count)
+  function start(next: Board): void {
+    board = next
     moves = 0
     solved = board.ropes.length === 0
     drag = null
@@ -646,17 +745,23 @@ export function setupTwistedRopes(container: HTMLElement): void {
   canvas.addEventListener('pointerup', endDrag)
   canvas.addEventListener('pointercancel', endDrag)
 
-  newButton.addEventListener('click', reset)
+  testButton.addEventListener('click', () => {
+    start(buildTestBoard())
+  })
+
+  newButton.addEventListener('click', () => {
+    start(freshBoard(count))
+  })
 
   fewerButton.addEventListener('click', () => {
     count = Math.max(MIN_ROPES, count - 1)
-    reset()
+    start(freshBoard(count))
   })
 
   moreButton.addEventListener('click', () => {
     count = Math.min(MAX_ROPES, count + 1)
-    reset()
+    start(freshBoard(count))
   })
 
-  reset()
+  start(buildTestBoard())
 }
