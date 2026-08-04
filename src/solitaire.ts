@@ -22,8 +22,15 @@ import {
   pointInRect,
   drawStock,
   autoPlayToFoundation,
+  sendTableauTopToFoundation,
+  sendWasteToFoundationAuto,
   returnToSource,
 } from './solitaire-rules'
+
+// onPointerDown calls preventDefault, which can suppress the compatibility dblclick event, so a
+// double-click is recognised from the pointer stream: two presses close together in time and place.
+const DOUBLE_CLICK_MS = 350
+const DOUBLE_CLICK_SLOP = 10
 
 // Trebuchet first for the rank digits; the symbol fonts back it up wherever it lacks a suit pip.
 const CARD_FONT = '"Trebuchet MS", "Apple Symbols", "Segoe UI Symbol", sans-serif'
@@ -75,6 +82,7 @@ export function setupSolitaire(container: HTMLElement): void {
   }
   let tableau: Card[][] = [[], [], [], [], [], [], []]
   let drag: DragState | null = null
+  let lastPress: { x: number; y: number; time: number } | null = null
 
   // Single scaled layout, recomputed from container width; render AND hit-testing read from it.
   let layout: Layout = scaledLayout(getResponsiveScale(container.clientWidth))
@@ -324,6 +332,50 @@ export function setupSolitaire(container: HTMLElement): void {
     draw()
   }
 
+  // Double-click on a column's exposed card sends it to a foundation if one will take it. Returns
+  // whether it handled the press, so a miss falls through to the normal pick-up path.
+  function sendExposedCardHome(pointX: number, pointY: number): boolean {
+    if (pointInRect(pointX, pointY, wasteRect()) && waste.length > 0) {
+      if (sendWasteToFoundationAuto(foundations, waste) === null) {
+        return false
+      }
+
+      checkWin()
+      draw()
+      return true
+    }
+
+    for (let col = 0; col < tableau.length; col += 1) {
+      const column = tableau[col]
+      const index = column.length - 1
+
+      if (index < 0) {
+        continue
+      }
+
+      const shape = {
+        x: pileX(col, layout),
+        y: tableauCardPositions(column, layout)[index],
+        w: layout.cardW,
+        h: layout.cardH,
+      }
+
+      if (!pointInRect(pointX, pointY, shape)) {
+        continue
+      }
+
+      if (sendTableauTopToFoundation(foundations, tableau, col) === null) {
+        return false
+      }
+
+      checkWin()
+      draw()
+      return true
+    }
+
+    return false
+  }
+
   function checkWin(): void {
     if (foundationTotal(foundations) === 52) {
       status.textContent = 'You won. Nice run!'
@@ -335,6 +387,21 @@ export function setupSolitaire(container: HTMLElement): void {
     const point = canvasPointFromPointer(event)
 
     if (drag) {
+      return
+    }
+
+    const isSecondPress =
+      lastPress !== null &&
+      event.timeStamp - lastPress.time <= DOUBLE_CLICK_MS &&
+      Math.abs(point.x - lastPress.x) <= DOUBLE_CLICK_SLOP &&
+      Math.abs(point.y - lastPress.y) <= DOUBLE_CLICK_SLOP
+
+    lastPress = { x: point.x, y: point.y, time: event.timeStamp }
+
+    // The first press of the pair lifted this card and its pointerup put it straight back, so the
+    // column is intact by the time the second press arrives.
+    if (isSecondPress && sendExposedCardHome(point.x, point.y)) {
+      lastPress = null
       return
     }
 

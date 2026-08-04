@@ -266,6 +266,60 @@ export function autoPlayToFoundation(foundations: Foundations, waste: Card[], ta
   return null
 }
 
+// The foundation slot that would accept this card, or null. Slots aren't suit-locked, so an Ace lands in
+// the first empty one and every later card matches the slot its own suit already occupies.
+export function findFoundationFor(foundations: Foundations, card: Card): Suit | null {
+  for (const suit of suits) {
+    if (canPlaceOnFoundation(foundations[suit], card)) {
+      return suit
+    }
+  }
+
+  return null
+}
+
+// Double-click shortcut for the drawn card: send the waste's top card to whichever foundation accepts
+// it. Returns the slot it went to, or null if it had nowhere to go.
+export function sendWasteToFoundationAuto(foundations: Foundations, waste: Card[]): Suit | null {
+  const card = waste[waste.length - 1]
+
+  if (!card) {
+    return null
+  }
+
+  const suit = findFoundationFor(foundations, card)
+
+  if (!suit) {
+    return null
+  }
+
+  waste.pop()
+  foundations[suit].push(card)
+  return suit
+}
+
+// Double-click shortcut: send a column's exposed card straight to whichever foundation accepts it,
+// flipping whatever it uncovered. Returns the slot it went to, or null if it had nowhere to go.
+export function sendTableauTopToFoundation(foundations: Foundations, tableau: Card[][], col: number): Suit | null {
+  const column = tableau[col]
+  const card = column[column.length - 1]
+
+  if (!card || !card.faceUp) {
+    return null
+  }
+
+  const suit = findFoundationFor(foundations, card)
+
+  if (!suit) {
+    return null
+  }
+
+  column.pop()
+  foundations[suit].push(card)
+  revealLast(column)
+  return suit
+}
+
 // feat-003/AC-9: an illegal drop returns the dragged cards to their source pile unchanged.
 export function returnToSource(cards: Card[], source: Source, waste: Card[], tableau: Card[][]): void {
   if (source.kind === 'waste') {

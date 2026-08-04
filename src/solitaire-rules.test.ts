@@ -11,6 +11,9 @@ import {
   foundationTotal,
   isWon,
   returnToSource,
+  findFoundationFor,
+  sendTableauTopToFoundation,
+  sendWasteToFoundationAuto,
 } from './solitaire-rules'
 
 function card(suit: Suit, rank: number, faceUp = true): Card {
@@ -75,6 +78,52 @@ test('feat-003/AC-9: returnToSource restores dragged cards to their waste or tab
   expect(waste.map((c) => c.rank)).toEqual([4])
   returnToSource([card('spades', 7), card('hearts', 6)], { kind: 'tableau', col: 2, index: 0 }, waste, tableau)
   expect(tableau[2].map((c) => c.rank)).toEqual([7, 6])
+})
+
+function emptyFoundations() {
+  return { hearts: [] as Card[], diamonds: [] as Card[], clubs: [] as Card[], spades: [] as Card[] }
+}
+
+test('findFoundationFor picks the first empty slot for an Ace, then the slot holding that suit', () => {
+  const foundations = emptyFoundations()
+  expect(findFoundationFor(foundations, card('spades', 1))).toBe('hearts') // first empty slot, not suit-locked
+  foundations.hearts = [card('spades', 1)]
+  expect(findFoundationFor(foundations, card('spades', 2))).toBe('hearts') // follows its own suit's pile
+  expect(findFoundationFor(foundations, card('spades', 4))).toBe(null) // skips a rank → nowhere to go
+  expect(findFoundationFor(foundations, card('clubs', 5))).toBe(null) // no pile is ready for it
+})
+
+test('double-click: sendTableauTopToFoundation lifts the exposed card and flips what it uncovered', () => {
+  const foundations = emptyFoundations()
+  const tableau: Card[][] = [[card('clubs', 9, false), card('diamonds', 1)], [], [], [], [], [], []]
+
+  expect(sendTableauTopToFoundation(foundations, tableau, 0)).toBe('hearts')
+  expect(foundations.hearts.map((c) => c.id)).toEqual(['diamonds-1'])
+  expect(tableau[0].map((c) => c.id)).toEqual(['clubs-9'])
+  expect(tableau[0][0].faceUp).toBe(true) // AC-8: the newly exposed card flips
+})
+
+test('double-click: sendTableauTopToFoundation refuses an ineligible, face-down, or missing card', () => {
+  const foundations = emptyFoundations()
+  const tableau: Card[][] = [[card('clubs', 9)], [card('spades', 4, false)], [], [], [], [], []]
+
+  expect(sendTableauTopToFoundation(foundations, tableau, 0)).toBe(null) // no foundation accepts a 9
+  expect(tableau[0].length).toBe(1) // and the card stays put
+  expect(sendTableauTopToFoundation(foundations, tableau, 1)).toBe(null) // face-down never travels
+  expect(sendTableauTopToFoundation(foundations, tableau, 2)).toBe(null) // empty column
+})
+
+test('double-click: sendWasteToFoundationAuto lifts only the drawn card, and only when eligible', () => {
+  const foundations = emptyFoundations()
+  const waste: Card[] = [card('hearts', 7), card('diamonds', 1)]
+
+  expect(sendWasteToFoundationAuto(foundations, waste)).toBe('hearts') // first empty slot takes the Ace
+  expect(foundations.hearts.map((c) => c.id)).toEqual(['diamonds-1'])
+  expect(waste.map((c) => c.id)).toEqual(['hearts-7']) // the card beneath is now the drawn card
+
+  expect(sendWasteToFoundationAuto(foundations, waste)).toBe(null) // nothing accepts a 7
+  expect(waste.length).toBe(1) // and it stays on the waste
+  expect(sendWasteToFoundationAuto(foundations, [])).toBe(null) // empty waste
 })
 
 test('feat-003/AC-10: the game is won only when all 52 cards are on the foundations', () => {
