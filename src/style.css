@@ -576,3 +576,83 @@ h1 {
   background: var(--surface);
   color: #cf3d48;
 }
+
+.decant {
+  margin-top: 1rem;
+}
+
+.decant-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  align-items: center;
+  margin-bottom: 0.6rem;
+}
+
+.decant-toolbar button {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.22);
+  color: var(--text);
+  padding: 0.45rem 0.7rem;
+  cursor: pointer;
+}
+
+.decant-toolbar button:hover:not(:disabled) {
+  border-color: var(--focus);
+}
+
+.decant-toolbar button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.decant-knob {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  color: var(--text-soft);
+}
+
+.decant-knob select {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.22);
+  color: var(--text);
+  padding: 0.4rem 0.5rem;
+  font: inherit;
+}
+
+#decant-status {
+  font-size: 0.95rem;
+  margin-left: auto;
+}
+
+#decant-status.decant-status-won {
+  color: var(--brand);
+  font-weight: 700;
+}
+
+.decant-note {
+  font-size: 0.9rem;
+  color: var(--text-soft);
+  margin-bottom: 0.6rem;
+  min-height: 1.2rem;
+}
+
+#decant-canvas {
+  width: 100%;
+  max-width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: linear-gradient(165deg, #0b4a55, #0a2f39);
+  display: block;
+  touch-action: none;
+}
+
+@media (max-width: 700px) {
+  #decant-status {
+    margin-left: 0;
+  }
+}
