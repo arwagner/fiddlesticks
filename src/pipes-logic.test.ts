@@ -1,7 +1,7 @@
 import { test, expect } from 'vitest'
 import {
   N, E, S, W, rotateCW, kindOf, lightDepths, looseEnds, isSolved, armCount,
-  newGameFromBoards, newGame, generateTree, scramble, rotate } from './pipes-logic'
+  newGameFromBoards, newGame, generateTree, scramble, rotate, toggleLock, undo } from './pipes-logic'
 
 test('four clockwise turns bring a tile back to where it started', () => {
   expect(rotateCW(N)).toBe(E)
@@ -146,4 +146,37 @@ test('a scramble keeps every tile’s kind and is never already solved', () => {
 test('the same seed deals the same game', () => {
   expect(newGame(7, seeded(42))).toEqual(newGame(7, seeded(42)))
   expect(newGame(7, seeded(42)).masks).not.toEqual(newGame(7, seeded(43)).masks)
+})
+
+test('a locked tile does not turn', () => {
+  const state = toggleLock(newGameFromBoards(TREE, withTurned(TREE, 0, 0)), 0, 0)
+
+  expect(state.locked[0][0]).toBe(true)
+  expect(rotate(state, 0, 0)).toBe(state)
+  expect(toggleLock(state, 0, 0).locked[0][0]).toBe(false)
+})
+
+test('locks have no say in whether the board is solved', () => {
+  const almost = toggleLock(newGameFromBoards(TREE, withTurned(withTurned(withTurned(TREE, 0, 0), 0, 0), 0, 0)), 1, 2)
+
+  expect(rotate(almost, 0, 0).solved).toBe(true)
+})
+
+test('undo steps back one action at a time, turns and locks alike', () => {
+  const dealt = newGameFromBoards(TREE, withTurned(TREE, 0, 0))
+  const turned = rotate(dealt, 1, 2)
+  const locked = toggleLock(turned, 2, 2)
+
+  expect(dealt.past).toHaveLength(0)
+  expect(locked.past).toHaveLength(2)
+  expect(undo(locked).locked).toEqual(dealt.locked)
+  expect(undo(locked).masks).toEqual(turned.masks)
+  expect(undo(undo(locked)).masks).toEqual(dealt.masks)
+  expect(undo(dealt)).toBe(dealt)
+})
+
+test('a solved board takes no locks', () => {
+  const solved = rotate(newGameFromBoards(TREE, withTurned(withTurned(withTurned(TREE, 0, 0), 0, 0), 0, 0)), 0, 0)
+
+  expect(toggleLock(solved, 1, 1)).toBe(solved)
 })

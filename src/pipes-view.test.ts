@@ -132,3 +132,57 @@ test('New puzzle deals a fresh board', () => {
   expect(deals).toBe(2)
   expect(status(element)).not.toMatch(/solved/i)
 })
+
+function button(element: HTMLElement, selector: string): HTMLButtonElement {
+  return element.querySelector<HTMLButtonElement>(selector)!
+}
+
+test('a right-click locks a tile, so clicks no longer turn it, and keeps the browser menu away', () => {
+  const element = mount()
+
+  const menu = pressTile(element, 0, 0, 2)
+  for (let i = 0; i < 3; i += 1) pressTile(element, 0, 0)
+
+  expect(menu.defaultPrevented).toBe(true)
+  expect(status(element)).not.toMatch(/solved/i)
+
+  pressTile(element, 0, 0, 2) // unlock
+  for (let i = 0; i < 3; i += 1) pressTile(element, 0, 0)
+  expect(status(element)).toMatch(/solved/i)
+})
+
+test('in Lock mode a click locks instead of turning', () => {
+  const element = mount()
+
+  button(element, '[data-mode="lock"]').click()
+  pressTile(element, 0, 0)
+  button(element, '[data-mode="rotate"]').click()
+  for (let i = 0; i < 3; i += 1) pressTile(element, 0, 0)
+
+  expect(status(element)).not.toMatch(/solved/i)
+})
+
+test('Undo is off at the deal, and takes back the last action', () => {
+  const element = mount()
+  const undoButton = button(element, '#pipes-undo')
+
+  expect(undoButton.disabled).toBe(true)
+
+  pressTile(element, 0, 0)
+  pressTile(element, 0, 0)
+  expect(undoButton.disabled).toBe(false)
+
+  undoButton.click() // back to two turns off
+  pressTile(element, 0, 0)
+  pressTile(element, 0, 0)
+  expect(status(element)).toMatch(/solved/i)
+})
+
+test('New puzzle clears the undo history', () => {
+  const element = mount()
+
+  pressTile(element, 1, 1)
+  button(element, '#pipes-new').click()
+
+  expect(button(element, '#pipes-undo').disabled).toBe(true)
+})

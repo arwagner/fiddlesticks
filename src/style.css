@@ -687,6 +687,16 @@ h1 {
   cursor: default;
 }
 
+.pipes-mode {
+  display: inline-flex;
+  gap: 0.3rem;
+}
+
+.pipes-mode button.active {
+  border-color: var(--focus);
+  background: var(--surface-strong);
+}
+
 #pipes-status {
   font-size: 0.95rem;
   margin-left: auto;
@@ -715,7 +725,17 @@ h1 {
 }
 
 @media (max-width: 700px) {
-  #pipes-status {
+  .pipes-mode {
+  display: inline-flex;
+  gap: 0.3rem;
+}
+
+.pipes-mode button.active {
+  border-color: var(--focus);
+  background: var(--surface-strong);
+}
+
+#pipes-status {
     margin-left: 0;
   }
 }

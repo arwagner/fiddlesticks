@@ -97,6 +97,9 @@ export type GameState = {
   source: Cell
   solution: number[][]
   masks: number[][]
+  locked: boolean[][]
+  // Each earlier position, newest last, so undo just pops one.
+  past: { masks: number[][]; locked: boolean[][] }[]
   solved: boolean
 }
 
@@ -179,6 +182,8 @@ export function newGameFromBoards(solution: number[][], masks: number[][]): Game
     source,
     solution: solution.map((row) => [...row]),
     masks: masks.map((row) => [...row]),
+    locked: masks.map((row) => row.map(() => false)),
+    past: [],
     solved: isSolved(masks, source),
   }
 }
@@ -204,13 +209,40 @@ export function newGame(size: number, random: () => number = Math.random): GameS
 }
 
 // Each move returns the same state when it changes nothing, so the view can skip a redraw.
+// A solved board is finished: it takes no more moves until a new deal.
 export function rotate(state: GameState, r: number, c: number): GameState {
-  if (state.solved) {
+  if (state.solved || state.locked[r][c]) {
     return state
   }
 
   const masks = state.masks.map((row) => [...row])
   masks[r][c] = rotateCW(masks[r][c])
 
-  return { ...state, masks, solved: isSolved(masks, state.source) }
+  return { ...state, masks, past: [...state.past, snapshot(state)], solved: isSolved(masks, state.source) }
+}
+
+// A lock only stops the tile turning. It has no say in whether the board is solved.
+export function toggleLock(state: GameState, r: number, c: number): GameState {
+  if (state.solved) {
+    return state
+  }
+
+  const locked = state.locked.map((row) => [...row])
+  locked[r][c] = !locked[r][c]
+
+  return { ...state, locked, past: [...state.past, snapshot(state)] }
+}
+
+export function undo(state: GameState): GameState {
+  const previous = state.past[state.past.length - 1]
+
+  if (state.solved || !previous) {
+    return state
+  }
+
+  return { ...state, ...previous, past: state.past.slice(0, -1), solved: isSolved(previous.masks, state.source) }
+}
+
+function snapshot(state: GameState): { masks: number[][]; locked: boolean[][] } {
+  return { masks: state.masks, locked: state.locked }
 }

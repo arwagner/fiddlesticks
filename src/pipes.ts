@@ -1,7 +1,9 @@
-import { newGame, rotate, lightDepths, armCount, ARMS, type GameState } from './pipes-logic'
+import { newGame, rotate, toggleLock, undo, lightDepths, armCount, ARMS, type GameState } from './pipes-logic'
 import { boardLayout, boardSize, tileAt, type Layout } from './pipes-layout'
 
 const TILE_FILL = 'rgba(6, 44, 53, 0.93)'
+const LOCKED_FILL = '#031317'
+const BOLT = 'rgba(154, 235, 213, 0.5)'
 const UNLIT = '#4a6a70'
 const LIT = '#ffb400'
 const SOURCE = '#f46f3d'
@@ -26,9 +28,14 @@ export function setupPipes(
     <div class="pipes">
       <div class="pipes-toolbar">
         <button id="pipes-new" type="button">New puzzle</button>
+        <button id="pipes-undo" type="button">Undo</button>
+        <div class="pipes-mode" role="group" aria-label="Click mode">
+          <button type="button" data-mode="rotate" class="active">Rotate</button>
+          <button type="button" data-mode="lock">Lock</button>
+        </div>
         <p id="pipes-status" aria-live="polite"></p>
       </div>
-      <p class="pipes-tip">Click a tile to rotate it.</p>
+      <p class="pipes-tip">Click to rotate. Right-click to lock.</p>
       <div class="pipes-board">
         <canvas id="pipes-canvas" aria-label="Board of pipe tiles"></canvas>
       </div>
@@ -38,17 +45,21 @@ export function setupPipes(
   const canvasElement = container.querySelector<HTMLCanvasElement>('#pipes-canvas')
   const statusElement = container.querySelector<HTMLParagraphElement>('#pipes-status')
   const newButtonElement = container.querySelector<HTMLButtonElement>('#pipes-new')
+  const undoButtonElement = container.querySelector<HTMLButtonElement>('#pipes-undo')
+  const modeButtons = Array.from(container.querySelectorAll<HTMLButtonElement>('.pipes-mode button'))
   const context = canvasElement?.getContext('2d')
 
-  if (!canvasElement || !statusElement || !newButtonElement || !context) {
+  if (!canvasElement || !statusElement || !newButtonElement || !undoButtonElement || !context) {
     throw new Error('Pipes UI elements are missing')
   }
 
   const canvas = canvasElement
   const status = statusElement
+  const undoButton = undoButtonElement
   const ctx = context
 
   let state = createGame(size)
+  let mode: 'rotate' | 'lock' = 'rotate'
   let layout: Layout = boardLayout(state.size, 280)
 
   function updateCanvasSize(): void {
@@ -71,10 +82,22 @@ export function setupPipes(
     ctx.save()
     ctx.translate(c * t + t / 2, r * t + t / 2)
 
-    ctx.fillStyle = state.solved ? WON : TILE_FILL
+    const locked = state.locked[r][c]
+    ctx.fillStyle = state.solved ? WON : locked ? LOCKED_FILL : TILE_FILL
     ctx.beginPath()
     ctx.roundRect(-half, -half, 2 * half, 2 * half, 6)
     ctx.fill()
+
+    // A locked tile is bolted down at the corners.
+    if (locked && !state.solved) {
+      ctx.fillStyle = BOLT
+
+      for (const [x, y] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+        ctx.beginPath()
+        ctx.arc(x * (half - 6), y * (half - 6), 2.2, 0, 2 * Math.PI)
+        ctx.fill()
+      }
+    }
 
     const pipe = state.solved ? WON_PIPE : lit ? LIT : UNLIT
     ctx.strokeStyle = pipe
@@ -125,6 +148,7 @@ export function setupPipes(
   function render(): void {
     status.textContent = state.solved ? 'Solved! Every pipe joins up.' : ''
     status.classList.toggle('pipes-status-won', state.solved)
+    undoButton.disabled = state.past.length === 0 || state.solved
     draw()
   }
 
@@ -146,13 +170,38 @@ export function setupPipes(
     render()
   }
 
+  // A right-click also sends a pointerdown first. Only the main button turns tiles, and the right button's
+  // contextmenu does the locking.
   canvas.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0) {
+      return
+    }
+
     event.preventDefault()
     const tile = tileFromPointer(event)
 
     if (tile) {
-      apply(rotate(state, tile.r, tile.c))
+      apply(mode === 'lock' ? toggleLock(state, tile.r, tile.c) : rotate(state, tile.r, tile.c))
     }
+  })
+
+  // A right-click always locks, whatever the mode buttons say. No browser menu over the board.
+  canvas.addEventListener('contextmenu', (event) => {
+    event.preventDefault()
+    const tile = tileFromPointer(event)
+
+    if (tile) {
+      apply(toggleLock(state, tile.r, tile.c))
+    }
+  })
+
+  undoButton.addEventListener('click', () => apply(undo(state)))
+
+  modeButtons.forEach((modeButton) => {
+    modeButton.addEventListener('click', () => {
+      mode = modeButton.dataset.mode === 'lock' ? 'lock' : 'rotate'
+      modeButtons.forEach((other) => other.classList.toggle('active', other === modeButton))
+    })
   })
 
   newButtonElement.addEventListener('click', () => {
