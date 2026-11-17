@@ -19,16 +19,28 @@ const ARM_ANGLE = new Map<number, number>([
   [ARMS[3].bit, Math.PI],
 ])
 
+// The board sizes the player can pick. Even 15×15 deals in a few milliseconds.
+export const SIZES = [5, 7, 9, 12, 15]
+
 export function setupPipes(
   container: HTMLElement,
   size = 7,
   createGame: (size: number) => GameState = newGame,
 ): void {
+  // Keep the starting size on the menu even when a caller asks for one that is not on the list.
+  const sizes = SIZES.includes(size) ? SIZES : [...SIZES, size].sort((a, b) => a - b)
+  const options = sizes
+    .map((n) => `<option value="${n}"${n === size ? ' selected' : ''}>${n} × ${n}</option>`)
+    .join('')
+
   container.innerHTML = `
     <div class="pipes">
       <div class="pipes-toolbar">
         <button id="pipes-new" type="button">New puzzle</button>
         <button id="pipes-undo" type="button">Undo</button>
+        <label class="pipes-size">Size
+          <select id="pipes-size">${options}</select>
+        </label>
         <div class="pipes-mode" role="group" aria-label="Click mode">
           <button type="button" data-mode="rotate" class="active">Rotate</button>
           <button type="button" data-mode="lock">Lock</button>
@@ -46,16 +58,18 @@ export function setupPipes(
   const statusElement = container.querySelector<HTMLParagraphElement>('#pipes-status')
   const newButtonElement = container.querySelector<HTMLButtonElement>('#pipes-new')
   const undoButtonElement = container.querySelector<HTMLButtonElement>('#pipes-undo')
+  const sizeSelectElement = container.querySelector<HTMLSelectElement>('#pipes-size')
   const modeButtons = Array.from(container.querySelectorAll<HTMLButtonElement>('.pipes-mode button'))
   const context = canvasElement?.getContext('2d')
 
-  if (!canvasElement || !statusElement || !newButtonElement || !undoButtonElement || !context) {
+  if (!canvasElement || !statusElement || !newButtonElement || !undoButtonElement || !sizeSelectElement || !context) {
     throw new Error('Pipes UI elements are missing')
   }
 
   const canvas = canvasElement
   const status = statusElement
   const undoButton = undoButtonElement
+  const sizeSelect = sizeSelectElement
   const ctx = context
 
   let state = createGame(size)
@@ -206,6 +220,12 @@ export function setupPipes(
 
   newButtonElement.addEventListener('click', () => {
     state = createGame(state.size)
+    render()
+  })
+
+  // A new size means a new puzzle. There is no way to keep the current board.
+  sizeSelect.addEventListener('change', () => {
+    state = createGame(Number(sizeSelect.value))
     render()
   })
 

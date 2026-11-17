@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { test, expect, beforeEach } from 'vitest'
-import { setupPipes } from './pipes'
-import { newGameFromBoards, rotateCW, N, E, S, W, type GameState } from './pipes-logic'
-import { boardLayout } from './pipes-layout'
+import { setupPipes, SIZES } from './pipes'
+import { newGameFromBoards, generateSolvableTree, rotateCW, N, E, S, W, type GameState } from './pipes-logic'
+import { boardLayout, MIN_TILE } from './pipes-layout'
 
 // jsdom draws nothing, so the canvas hands back a context that records nothing and refuses nothing. What
 // is under test is the wiring: clicks, locks, undo. Not the pixels.
@@ -51,8 +51,9 @@ function turned(board: number[][], r: number, c: number, times = 1): number[][] 
 // Three more clockwise turns put the top-left end back in place.
 const oneOff = (): GameState => newGameFromBoards(TREE, turned(TREE, 0, 0))
 
-function mount(makeGame: (size: number) => GameState = oneOff, size = 3) {
+function mount(makeGame: (size: number) => GameState = oneOff, size = 3, width?: number) {
   const element = document.createElement('div')
+  if (width !== undefined) Object.defineProperty(element, 'clientWidth', { value: width })
   document.body.appendChild(element)
   setupPipes(element, size, makeGame)
   return element
@@ -62,8 +63,8 @@ function canvasOf(element: HTMLElement): HTMLCanvasElement {
   return element.querySelector<HTMLCanvasElement>('#pipes-canvas')!
 }
 
-function pressTile(element: HTMLElement, r: number, c: number, button = 0, size = 3): MouseEvent {
-  const layout = boardLayout(size, WIDTH)
+function pressTile(element: HTMLElement, r: number, c: number, button = 0, size = 3, width = WIDTH): MouseEvent {
+  const layout = boardLayout(size, width)
   const event = new MouseEvent(button === 2 ? 'contextmenu' : 'pointerdown', {
     clientX: (c + 0.5) * layout.tile,
     clientY: (r + 0.5) * layout.tile,
@@ -185,4 +186,58 @@ test('New puzzle clears the undo history', () => {
   button(element, '#pipes-new').click()
 
   expect(button(element, '#pipes-undo').disabled).toBe(true)
+})
+
+function sizeMenu(element: HTMLElement): HTMLSelectElement {
+  return element.querySelector<HTMLSelectElement>('#pipes-size')!
+}
+
+test('the size menu offers every size and starts on the one asked for', () => {
+  const element = mount(oneOff, 3)
+  const values = Array.from(sizeMenu(element).options).map((option) => Number(option.value))
+
+  expect(SIZES).toEqual([5, 7, 9, 12, 15])
+  expect(values).toEqual([3, 5, 7, 9, 12, 15]) // 3 is not on the list, so it joins in order
+  expect(sizeMenu(element).value).toBe('3')
+})
+
+test('picking a size deals a new puzzle at that size', () => {
+  const asked: number[] = []
+  const element = mount((size) => {
+    asked.push(size)
+    return oneOff()
+  })
+
+  sizeMenu(element).value = '12'
+  sizeMenu(element).dispatchEvent(new Event('change'))
+
+  expect(asked).toEqual([3, 12])
+})
+
+// A board one tile off its answer, at the bottom right where scaling errors land furthest from home.
+function cornerOff(size: number): () => GameState {
+  const solution = generateSolvableTree(size, () => 0.37)
+  return () => newGameFromBoards(solution, turned(solution, size - 1, size - 1))
+}
+
+test('clicks land on the tile under the pointer at every size and width', () => {
+  for (const size of SIZES) {
+    for (const width of [320, 700, 1100]) {
+      document.body.innerHTML = ''
+      const element = mount(cornerOff(size), size, width)
+      const last = size - 1
+
+      const press = (r: number, c: number, times: number) => {
+        for (let i = 0; i < times; i += 1) pressTile(element, r, c, 0, size, width - 16)
+      }
+
+      expect(boardLayout(size, width - 16).tile).toBeGreaterThanOrEqual(MIN_TILE)
+      press(last, last - 1, 1) // knock the neighbour off too
+      press(last, last, 3) // the corner is back, but the neighbour is not
+      expect(status(element)).not.toMatch(/solved/i)
+
+      press(last, last - 1, 3) // four turns in all bring the neighbour home
+      expect(status(element)).toMatch(/solved/i)
+    }
+  }
 })
