@@ -33,7 +33,7 @@ export function kindOf(mask: number): Kind {
   return mask === (N | S) || mask === (E | W) ? 'straight' : 'corner'
 }
 
-export type Cell = { r: number; c: number }
+export type Position = { r: number; c: number }
 
 // Each arm with the step to the neighbour it faces, and the arm that neighbour needs to face back.
 export const ARMS = [
@@ -50,9 +50,9 @@ function joined(masks: number[][], r: number, c: number, arm: (typeof ARMS)[numb
 }
 
 // How many joins each tile is from the source, or -1 for a tile that is not lit.
-export function lightDepths(masks: number[][], source: Cell): number[][] {
+export function lightDepths(masks: number[][], source: Position): number[][] {
   const depths = masks.map((row) => row.map(() => -1))
-  const queue: Cell[] = [source]
+  const queue: Position[] = [source]
   depths[source.r][source.c] = 0
 
   for (let head = 0; head < queue.length; head += 1) {
@@ -88,13 +88,13 @@ export function looseEnds(masks: number[][]): number {
 
 // No loose ends alone would allow a loop plus a separate island. Requiring every tile lit too forces a
 // single tree, and since each dealt board has one answer, that tree is the answer.
-export function isSolved(masks: number[][], source: Cell): boolean {
+export function isSolved(masks: number[][], source: Position): boolean {
   return looseEnds(masks) === 0 && lightDepths(masks, source).every((row) => row.every((depth) => depth >= 0))
 }
 
 export type GameState = {
   size: number
-  source: Cell
+  source: Position
   solution: number[][]
   masks: number[][]
   locked: boolean[][]
@@ -103,7 +103,7 @@ export type GameState = {
   solved: boolean
 }
 
-export function sourceFor(size: number): Cell {
+export function sourceFor(size: number): Position {
   const middle = Math.floor((size - 1) / 2)
 
   return { r: middle, c: middle }
@@ -248,7 +248,7 @@ function snapshot(state: GameState): { masks: number[][]; locked: boolean[][] } 
 }
 
 // A tile the player could work out now, or a lock that is wrong.
-export type Hint = { kind: 'wrong-lock'; r: number; c: number } | { kind: 'fix'; r: number; c: number; mask: number }
+export type Hint = (Position & { type: 'wrong-lock' }) | (Position & { type: 'fix'; mask: number })
 
 // A wrong lock comes first: deductions from it would be wrong, and the player could be stuck for good.
 // Otherwise the hints are the tiles the solver fixes first, knowing only the border and the correct locks.
@@ -262,7 +262,7 @@ export function findHints(state: GameState): Hint[] {
   state.locked.forEach((row, r) =>
     row.forEach((locked, c) => {
       if (locked && state.masks[r][c] !== state.solution[r][c]) {
-        wrong.push({ kind: 'wrong-lock', r, c })
+        wrong.push({ type: 'wrong-lock', r, c })
       }
     }),
   )
@@ -273,12 +273,12 @@ export function findHints(state: GameState): Hint[] {
 
   const givens = state.solution.map((row, r) => row.map((mask, c) => (state.locked[r][c] ? mask : null)))
 
-  return deduceRound(state.solution, givens).map(({ r, c, mask }) => ({ kind: 'fix' as const, r, c, mask }))
+  return deduceRound(state.solution, givens).map(({ r, c, mask }) => ({ type: 'fix' as const, r, c, mask }))
 }
 
 // A fix turns the tile into place and locks it, as one step. A wrong lock is only pointed out.
 export function applyHint(state: GameState, hint: Hint): GameState {
-  if (state.solved || hint.kind !== 'fix') {
+  if (state.solved || hint.type !== 'fix') {
     return state
   }
 

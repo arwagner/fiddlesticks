@@ -1,6 +1,8 @@
 // Where the tiles sit on the canvas at whatever width the page gives us (no DOM). pipes.ts both draws from
 // this and hit-tests against it, so a click always lands on the tile the player aimed at.
 
+import type { Position } from './pipes-logic'
+
 export type Layout = { size: number; tile: number }
 
 // Below this a tile is hard to hit with a finger, so a big board on a small screen scrolls instead.
@@ -13,7 +15,7 @@ export function boardLayout(size: number, containerWidth: number): Layout {
   return { size, tile }
 }
 
-export function tileAt(x: number, y: number, layout: Layout): { r: number; c: number } | null {
+export function tileAt(x: number, y: number, layout: Layout): Position | null {
   const r = Math.floor(y / layout.tile)
   const c = Math.floor(x / layout.tile)
 

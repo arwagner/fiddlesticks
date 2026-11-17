@@ -186,8 +186,8 @@ test('Hint flags a wrong lock before anything else', () => {
   const hints = findHints(state)
 
   expect(hints.length).toBeGreaterThan(0)
-  expect(hints.every((hint) => hint.kind === 'wrong-lock')).toBe(true)
-  expect(hints).toContainEqual({ kind: 'wrong-lock', r: 0, c: 0 })
+  expect(hints.every((hint) => hint.type === 'wrong-lock')).toBe(true)
+  expect(hints).toContainEqual({ type: 'wrong-lock', r: 0, c: 0 })
   expect(applyHint(state, hints[0])).toBe(state)
 })
 
@@ -208,8 +208,8 @@ test('Hint always has a tile to give on an unsolved board, and it gives the righ
       expect(hints.length).toBeGreaterThan(0)
 
       for (const hint of hints) {
-        expect(hint.kind).toBe('fix')
-        if (hint.kind === 'fix') {
+        expect(hint.type).toBe('fix')
+        if (hint.type === 'fix') {
           expect(hint.mask).toBe(state.solution[hint.r][hint.c])
           expect(state.locked[hint.r][hint.c]).toBe(false)
         }
@@ -225,7 +225,7 @@ test('taking a hint turns and locks one tile, as one undo step', () => {
   const hint = findHints(state)[0]
   const after = applyHint(state, hint)
 
-  if (hint.kind !== 'fix') throw new Error('expected a tile to fix')
+  if (hint.type !== 'fix') throw new Error('expected a tile to fix')
   expect(after.masks[hint.r][hint.c]).toBe(TREE[hint.r][hint.c])
   expect(after.locked[hint.r][hint.c]).toBe(true)
   expect(after.past).toHaveLength(1)
@@ -237,4 +237,25 @@ test('a solved board has no hints', () => {
   const solved = rotate(newGameFromBoards(TREE, withTurned(withTurned(withTurned(TREE, 0, 0), 0, 0), 0, 0)), 0, 0)
 
   expect(findHints(solved)).toEqual([])
+})
+
+const spots = (hints: ReturnType<typeof findHints>) => hints.map(({ r, c }) => `${r},${c}`).sort()
+
+// Worked by hand from TREE, knowing only the border. The two edge tees and the bottom-right corner each have
+// one rotation that keeps every arm on the board. The ends at (0,0), (0,2), (1,0) and (2,0) each have only
+// one way to point that isn't at another end, which would close off a piece of two. The end at (1,2) could
+// still point down or left, and nothing rules out any rotation of the centre tee yet.
+test('a hint is one step from what the board shows, not the end of a chain', () => {
+  const state = newGameFromBoards(TREE, withTurned(TREE, 1, 1))
+
+  expect(spots(findHints(state))).toEqual(['0,0', '0,1', '0,2', '1,0', '2,0', '2,1', '2,2'])
+})
+
+test('correct locks count straight away', () => {
+  let state = newGameFromBoards(TREE, withTurned(withTurned(TREE, 0, 1), 1, 1))
+
+  for (const [r, c] of [[0, 0], [0, 2], [1, 0], [1, 2], [2, 0], [2, 1], [2, 2]]) state = toggleLock(state, r, c)
+
+  // The centre tee's four neighbours are all locked, so it is as certain as the top tee on the border.
+  expect(spots(findHints(state))).toEqual(['0,1', '1,1'])
 })

@@ -270,3 +270,13 @@ test('Hint points out a wrong lock before giving anything away, and the note cle
   pressTile(element, 0, 0, 2) // unlock it
   expect(note(element)).toBe('')
 })
+
+test('a click that changes nothing still clears the hint', () => {
+  const element = mount()
+
+  pressTile(element, 0, 0, 2) // a wrong lock
+  button(element, '#pipes-hint').click()
+  pressTile(element, 0, 0) // refused: the tile is locked
+
+  expect(note(element)).toBe('')
+})

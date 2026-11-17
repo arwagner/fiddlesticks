@@ -719,7 +719,7 @@ h1 {
   margin-left: auto;
 }
 
-#pipes-status.pipes-status-won {
+#pipes-status.pipes-status-solved {
   color: var(--brand);
   font-weight: 700;
 }
@@ -749,34 +749,7 @@ h1 {
 }
 
 @media (max-width: 700px) {
-  .pipes-size {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.9rem;
-  color: var(--text-soft);
-}
-
-.pipes-size select {
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.22);
-  color: var(--text);
-  padding: 0.4rem 0.5rem;
-  font: inherit;
-}
-
-.pipes-mode {
-  display: inline-flex;
-  gap: 0.3rem;
-}
-
-.pipes-mode button.active {
-  border-color: var(--focus);
-  background: var(--surface-strong);
-}
-
-#pipes-status {
+  #pipes-status {
     margin-left: 0;
   }
 }

@@ -9,7 +9,7 @@
 // 3. Dead-end avoidance: a rotation whose every arm leads into a known dead end would close off a piece
 //    smaller than the whole board.
 
-import { rotateCW, ARMS } from './pipes-logic'
+import { rotateCW, ARMS, type Position } from './pipes-logic'
 
 // A tile's fixed mask, or null where it is not known.
 export type Givens = (number | null)[][]
@@ -40,13 +40,15 @@ function rotationsOf(mask: number): number[] {
 }
 
 type Solver = {
-  // Runs one full pass over every tile. Returns the tiles it fixed, or null on a contradiction.
-  pass: () => number[] | null
+  // Runs one full pass over every tile. Returns the tiles it fixed, or null on a contradiction. A held pass
+  // judges every tile on what was known when the pass began, so nothing it learns about one tile feeds into
+  // the next. Hint needs that to keep to a single step.
+  pass: (hold?: boolean) => number[] | null
   candidates: number[][]
 }
 
-function createSolver(kinds: number[][], givens?: Givens): Solver {
-  const size = kinds.length
+function createSolver(tiles: number[][], givens?: Givens): Solver {
+  const size = tiles.length
   const area = size * size
   const neighbour = (index: number, arm: number): number => {
     const r = Math.floor(index / size) + ARMS[arm].dr
@@ -55,7 +57,7 @@ function createSolver(kinds: number[][], givens?: Givens): Solver {
     return r >= 0 && r < size && c >= 0 && c < size ? r * size + c : -1
   }
 
-  const candidates = kinds.flat().map((mask, index) => {
+  const candidates = tiles.flat().map((mask, index) => {
     const given = givens?.[Math.floor(index / size)][index % size]
 
     return given === null || given === undefined ? rotationsOf(mask) : [given]
@@ -71,6 +73,21 @@ function createSolver(kinds: number[][], givens?: Givens): Solver {
     for (let arm = 0; arm < 4; arm += 1) {
       if (neighbour(index, arm) < 0) {
         edges[index * 4 + arm] = CLOSED
+      }
+    }
+  }
+
+  // A given tile's arms are known at once, so its neighbours can use them from the first pass.
+  for (let index = 0; index < area; index += 1) {
+    const given = givens?.[Math.floor(index / size)][index % size]
+
+    if (given === null || given === undefined) {
+      continue
+    }
+
+    for (let arm = 0; arm < 4; arm += 1) {
+      if (edges[index * 4 + arm] === UNKNOWN) {
+        setEdge(index, arm, given & ARMS[arm].bit ? OPEN : CLOSED)
       }
     }
   }
@@ -196,8 +213,9 @@ function createSolver(kinds: number[][], givens?: Givens): Solver {
     return !(allDeadEnds && deadEnds < area)
   }
 
-  function pass(): number[] | null {
+  function pass(hold = false): number[] | null {
     const fixed: number[] = []
+    const held: [number, number, number][] = []
     updateBounds()
 
     for (let index = 0; index < area; index += 1) {
@@ -222,11 +240,19 @@ function createSolver(kinds: number[][], givens?: Givens): Solver {
 
         const bit = ARMS[arm].bit
 
-        if (kept.every((mask) => mask & bit)) {
-          setEdge(index, arm, OPEN)
-        } else if (kept.every((mask) => !(mask & bit))) {
-          setEdge(index, arm, CLOSED)
+        const state = kept.every((mask) => mask & bit) ? OPEN : kept.every((mask) => !(mask & bit)) ? CLOSED : UNKNOWN
+
+        if (state !== UNKNOWN && hold) {
+          held.push([index, arm, state])
+        } else if (state !== UNKNOWN) {
+          setEdge(index, arm, state)
         }
+      }
+    }
+
+    for (const [index, arm, state] of held) {
+      if (edges[index * 4 + arm] === UNKNOWN) {
+        setEdge(index, arm, state)
       }
     }
 
@@ -240,9 +266,9 @@ function progressSignature(candidates: number[][]): number {
   return candidates.reduce((sum, list) => sum + list.length, 0)
 }
 
-export function solve(kinds: number[][], givens?: Givens): SolveResult {
-  const size = kinds.length
-  const solver = createSolver(kinds, givens)
+export function solve(tiles: number[][], givens?: Givens): SolveResult {
+  const size = tiles.length
+  const solver = createSolver(tiles, givens)
   let remaining = progressSignature(solver.candidates)
   let contradiction = false
 
@@ -277,18 +303,18 @@ export function isDeducible(solution: number[][]): boolean {
   return solve(solution).status === 'solved'
 }
 
-// The tiles Hint may give away: the first wave the solver fixes from the givens. That is every tile that
-// becomes certain during the earliest pass in which any tile does. Like Nonogram's one-line hints, that keeps
-// a hint to a step the player could see from the board, not the end of a long chain. It is never empty while
-// a deducible board has unknown tiles, because the solver can finish the board from the border alone and
-// givens only add to what it knows.
-export function deduceRound(kinds: number[][], givens: Givens): { r: number; c: number; mask: number }[] {
-  const size = kinds.length
-  const solver = createSolver(kinds, givens)
+// The tiles Hint may give away: the first wave the solver fixes from the givens. Each pass is held, so a tile
+// counts only if what was known before the pass settles it. Like Nonogram's one-line hints, that keeps a hint
+// to a step the player could see from the board, not the end of a chain. The rules are monotone, so held
+// passes reach the same end as ordinary ones. It is never empty while a deducible board has unknown tiles,
+// because the solver can finish the board from the border alone and givens only add to what it knows.
+export function deduceRound(tiles: number[][], givens: Givens): (Position & { mask: number })[] {
+  const size = tiles.length
+  const solver = createSolver(tiles, givens)
   let remaining = progressSignature(solver.candidates)
 
   for (;;) {
-    const fixed = solver.pass()
+    const fixed = solver.pass(true)
 
     if (fixed === null) {
       return []

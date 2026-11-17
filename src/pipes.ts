@@ -10,6 +10,7 @@ import {
   ARMS,
   type GameState,
   type Hint,
+  type Position,
 } from './pipes-logic'
 import { boardLayout, boardSize, tileAt, type Layout } from './pipes-layout'
 
@@ -20,8 +21,8 @@ const UNLIT = '#4a6a70'
 const LIT = '#ffb400'
 const SOURCE = '#f46f3d'
 const SOURCE_RING = '#ffe08a'
-const WON = '#6dd4b8'
-const WON_PIPE = '#05161a'
+const SOLVED_FILL = '#6dd4b8'
+const SOLVED_PIPE = '#05161a'
 const HINT_RING = '#ffd264'
 const WRONG_RING = '#cf3d48'
 
@@ -138,9 +139,9 @@ export function setupPipes(
 
   // Animation state, all in performance.now() time. A tile turning or refusing to turn, when each lit tile
   // started to light up (null while unlit), and when the win sweep starts.
-  let motion = new Map<number, { kind: 'turn' | 'wiggle'; at: number }>()
+  let motion = new Map<number, { type: 'turn' | 'wiggle'; at: number }>()
   let litAt: (number | null)[][] = []
-  let wonAt: number | null = null
+  let solvedAt: number | null = null
   let frameRequested = false
 
   function updateCanvasSize(): void {
@@ -156,12 +157,12 @@ export function setupPipes(
 
   // How far each part of a tile's animation has got at time now, from 0 to 1.
   function sweepOf(r: number, c: number, now: number): number {
-    if (wonAt === null) {
+    if (solvedAt === null) {
       return 0
     }
 
     const delay = ((r + c) / Math.max(1, 2 * state.size - 2)) * SWEEP_SPAN_MS
-    return easeOutCubic((now - wonAt - delay) / SWEEP_TILE_MS)
+    return easeOutCubic((now - solvedAt - delay) / SWEEP_TILE_MS)
   }
 
   function lightOf(r: number, c: number, now: number): number {
@@ -177,7 +178,7 @@ export function setupPipes(
       return 0
     }
 
-    if (moving.kind === 'turn') {
+    if (moving.type === 'turn') {
       return -(Math.PI / 2) * (1 - easeOutCubic((now - moving.at) / TURN_MS))
     }
 
@@ -203,7 +204,7 @@ export function setupPipes(
 
     // The win sweep: a green square grows out of each tile, one diagonal after another.
     if (sweep > 0) {
-      ctx.fillStyle = WON
+      ctx.fillStyle = SOLVED_FILL
       ctx.beginPath()
       ctx.roundRect(-half * sweep, -half * sweep, 2 * half * sweep, 2 * half * sweep, 6)
       ctx.fill()
@@ -221,7 +222,7 @@ export function setupPipes(
     }
 
     ctx.rotate(angleOf(r, c, now))
-    const pipe = sweep > 0.5 ? WON_PIPE : mix(UNLIT, LIT, lightOf(r, c, now))
+    const pipe = sweep > 0.5 ? SOLVED_PIPE : mix(UNLIT, LIT, lightOf(r, c, now))
     ctx.strokeStyle = pipe
     ctx.fillStyle = pipe
     ctx.lineCap = 'round'
@@ -253,7 +254,7 @@ export function setupPipes(
     }
 
     if (hint && hint.r === r && hint.c === c) {
-      ctx.strokeStyle = hint.kind === 'wrong-lock' ? WRONG_RING : HINT_RING
+      ctx.strokeStyle = hint.type === 'wrong-lock' ? WRONG_RING : HINT_RING
       ctx.lineWidth = 3
       ctx.beginPath()
       ctx.roundRect(-half + 1.5, -half + 1.5, 2 * half - 3, 2 * half - 3, 6)
@@ -291,9 +292,9 @@ export function setupPipes(
   }
 
   function animating(now: number): boolean {
-    const turning = [...motion.values()].some((m) => now - m.at < (m.kind === 'turn' ? TURN_MS : WIGGLE_MS))
+    const turning = [...motion.values()].some((m) => now - m.at < (m.type === 'turn' ? TURN_MS : WIGGLE_MS))
     const lighting = litAt.some((row) => row.some((at) => at !== null && now - at < LIGHT_MS))
-    const sweeping = wonAt !== null && now - wonAt < SWEEP_SPAN_MS + SWEEP_TILE_MS
+    const sweeping = solvedAt !== null && now - solvedAt < SWEEP_SPAN_MS + SWEEP_TILE_MS
 
     return turning || lighting || sweeping
   }
@@ -326,7 +327,7 @@ export function setupPipes(
     relight(now)
 
     if (state.solved && !wasSolved) {
-      wonAt = now + SWEEP_START_MS
+      solvedAt = now + SWEEP_START_MS
     }
 
     if (Number.isFinite(now)) {
@@ -336,14 +337,14 @@ export function setupPipes(
 
   function render(): void {
     status.textContent = state.solved ? 'Solved! Every pipe joins up.' : ''
-    status.classList.toggle('pipes-status-won', state.solved)
+    status.classList.toggle('pipes-status-solved', state.solved)
     undoButton.disabled = state.past.length === 0 || state.solved
     hintButton.disabled = state.solved
-    note.textContent = hint?.kind === 'wrong-lock' ? 'This lock is wrong.' : ''
+    note.textContent = hint?.type === 'wrong-lock' ? 'This lock is wrong.' : ''
     draw()
   }
 
-  function tileFromPointer(event: MouseEvent): { r: number; c: number } | null {
+  function tileFromPointer(event: MouseEvent): Position | null {
     const bounds = canvas.getBoundingClientRect()
     const x = (event.clientX - bounds.left) * (canvas.width / bounds.width)
     const y = (event.clientY - bounds.top) * (canvas.height / bounds.height)
@@ -351,9 +352,14 @@ export function setupPipes(
     return tileAt(x, y, layout)
   }
 
-  // A move returns the same state when it changes nothing, so there is nothing to redraw.
+  // A move returns the same state when it changes nothing. Then only a stale hint needs clearing.
   function apply(next: GameState): void {
     if (next === state) {
+      if (hint) {
+        hint = null
+        render()
+      }
+
       return
     }
 
@@ -369,7 +375,7 @@ export function setupPipes(
     hint = null
     motion = new Map()
     litAt = []
-    wonAt = null
+    solvedAt = null
     startAnimations(false)
     render()
   }
@@ -398,9 +404,9 @@ export function setupPipes(
 
     // A locked tile refuses with a shake, so the player sees why nothing turned.
     if (next === state && state.locked[tile.r][tile.c] && !state.solved) {
-      motion.set(tile.r * state.size + tile.c, { kind: 'wiggle', at: now })
+      motion.set(tile.r * state.size + tile.c, { type: 'wiggle', at: now })
     } else if (next !== state) {
-      motion.set(tile.r * state.size + tile.c, { kind: 'turn', at: now })
+      motion.set(tile.r * state.size + tile.c, { type: 'turn', at: now })
     }
 
     if (Number.isFinite(now)) {

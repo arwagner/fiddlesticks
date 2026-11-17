@@ -89,7 +89,7 @@ test('the solver finishes about half of random 12×12 trees', () => {
 
 test('every dealt game, at every size, is deducible', () => {
   for (const size of SIZES) {
-    for (let seed = 1; seed <= 40; seed += 1) {
+    for (let seed = 1; seed <= 200; seed += 1) {
       expect(isDeducible(newGame(size, seeded(seed * 97 + size)).solution)).toBe(true)
     }
   }
