@@ -656,3 +656,66 @@ h1 {
     margin-left: 0;
   }
 }
+
+.pipes {
+  margin-top: 1rem;
+}
+
+.pipes-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  align-items: center;
+  margin-bottom: 0.6rem;
+}
+
+.pipes-toolbar button {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.22);
+  color: var(--text);
+  padding: 0.45rem 0.7rem;
+  cursor: pointer;
+}
+
+.pipes-toolbar button:hover:not(:disabled) {
+  border-color: var(--focus);
+}
+
+.pipes-toolbar button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+#pipes-status {
+  font-size: 0.95rem;
+  margin-left: auto;
+}
+
+#pipes-status.pipes-status-won {
+  color: var(--brand);
+  font-weight: 700;
+}
+
+.pipes-tip {
+  font-size: 0.9rem;
+  color: var(--text-soft);
+  margin-bottom: 0.6rem;
+}
+
+/* A big board on a small screen scrolls sideways instead of shrinking its tiles past a comfortable tap. */
+.pipes-board {
+  overflow-x: auto;
+}
+
+#pipes-canvas {
+  display: block;
+  margin: 0 auto;
+  touch-action: manipulation;
+}
+
+@media (max-width: 700px) {
+  #pipes-status {
+    margin-left: 0;
+  }
+}
