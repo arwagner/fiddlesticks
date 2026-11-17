@@ -247,7 +247,8 @@ function note(element: HTMLElement): string {
 }
 
 test('pressing Hint enough times finishes the board, one undoable step at a time', () => {
-  const element = mount()
+  // Two tiles off, so the first hint can't finish the board by itself.
+  const element = mount(() => newGameFromBoards(TREE, turned(turned(TREE, 0, 0), 2, 2)))
   const hint = button(element, '#pipes-hint')
 
   hint.click()
