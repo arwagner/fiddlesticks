@@ -2,6 +2,8 @@
 // there is no separate rotation index. Two masks that look the same are the same: a straight turned 180°
 // is the same tile.
 
+import { isDeducible } from './pipes-solver'
+
 export const N = 1
 export const E = 2
 export const S = 4
@@ -181,8 +183,22 @@ export function newGameFromBoards(solution: number[][], masks: number[][]): Game
   }
 }
 
+// A puzzle the player can finish by deduction alone, which also makes its answer the only one. About half of
+// random 12×12 trees pass and a quarter at 15×15, and a test costs about a millisecond, so building fresh
+// trees until one passes is cheap. If every attempt fails this returns the last tree, which may need a
+// guess. The cap is high enough that this can't happen in practice.
+export function generateSolvableTree(size: number, random: () => number, maxAttempts = 200): number[][] {
+  let tree = generateTree(size, random)
+
+  for (let attempt = 1; attempt < maxAttempts && !isDeducible(tree); attempt += 1) {
+    tree = generateTree(size, random)
+  }
+
+  return tree
+}
+
 export function newGame(size: number, random: () => number = Math.random): GameState {
-  const solution = generateTree(size, random)
+  const solution = generateSolvableTree(size, random)
 
   return newGameFromBoards(solution, scramble(solution, random))
 }
