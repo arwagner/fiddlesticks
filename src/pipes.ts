@@ -1,4 +1,16 @@
-import { newGame, rotate, toggleLock, undo, lightDepths, armCount, ARMS, type GameState } from './pipes-logic'
+import {
+  newGame,
+  rotate,
+  toggleLock,
+  undo,
+  findHints,
+  applyHint,
+  lightDepths,
+  armCount,
+  ARMS,
+  type GameState,
+  type Hint,
+} from './pipes-logic'
 import { boardLayout, boardSize, tileAt, type Layout } from './pipes-layout'
 
 const TILE_FILL = 'rgba(6, 44, 53, 0.93)'
@@ -10,6 +22,8 @@ const SOURCE = '#f46f3d'
 const SOURCE_RING = '#ffe08a'
 const WON = '#6dd4b8'
 const WON_PIPE = '#05161a'
+const HINT_RING = '#ffd264'
+const WRONG_RING = '#cf3d48'
 
 // The angle each arm points at, in canvas terms (y grows downward).
 const ARM_ANGLE = new Map<number, number>([
@@ -38,6 +52,7 @@ export function setupPipes(
       <div class="pipes-toolbar">
         <button id="pipes-new" type="button">New puzzle</button>
         <button id="pipes-undo" type="button">Undo</button>
+        <button id="pipes-hint" type="button">Hint</button>
         <label class="pipes-size">Size
           <select id="pipes-size">${options}</select>
         </label>
@@ -48,6 +63,7 @@ export function setupPipes(
         <p id="pipes-status" aria-live="polite"></p>
       </div>
       <p class="pipes-tip">Click to rotate. Right-click to lock.</p>
+      <p id="pipes-note" class="pipes-note" aria-live="polite"></p>
       <div class="pipes-board">
         <canvas id="pipes-canvas" aria-label="Board of pipe tiles"></canvas>
       </div>
@@ -59,10 +75,21 @@ export function setupPipes(
   const newButtonElement = container.querySelector<HTMLButtonElement>('#pipes-new')
   const undoButtonElement = container.querySelector<HTMLButtonElement>('#pipes-undo')
   const sizeSelectElement = container.querySelector<HTMLSelectElement>('#pipes-size')
+  const hintButtonElement = container.querySelector<HTMLButtonElement>('#pipes-hint')
+  const noteElement = container.querySelector<HTMLParagraphElement>('#pipes-note')
   const modeButtons = Array.from(container.querySelectorAll<HTMLButtonElement>('.pipes-mode button'))
   const context = canvasElement?.getContext('2d')
 
-  if (!canvasElement || !statusElement || !newButtonElement || !undoButtonElement || !sizeSelectElement || !context) {
+  if (
+    !canvasElement ||
+    !statusElement ||
+    !newButtonElement ||
+    !undoButtonElement ||
+    !sizeSelectElement ||
+    !hintButtonElement ||
+    !noteElement ||
+    !context
+  ) {
     throw new Error('Pipes UI elements are missing')
   }
 
@@ -70,10 +97,14 @@ export function setupPipes(
   const status = statusElement
   const undoButton = undoButtonElement
   const sizeSelect = sizeSelectElement
+  const hintButton = hintButtonElement
+  const note = noteElement
   const ctx = context
 
   let state = createGame(size)
   let mode: 'rotate' | 'lock' = 'rotate'
+  // The tile the last hint pointed at. Any later action clears it.
+  let hint: Hint | null = null
   let layout: Layout = boardLayout(state.size, 280)
 
   function updateCanvasSize(): void {
@@ -144,6 +175,14 @@ export function setupPipes(
       ctx.stroke()
     }
 
+    if (hint && hint.r === r && hint.c === c) {
+      ctx.strokeStyle = hint.kind === 'wrong-lock' ? WRONG_RING : HINT_RING
+      ctx.lineWidth = 3
+      ctx.beginPath()
+      ctx.roundRect(-half + 1.5, -half + 1.5, 2 * half - 3, 2 * half - 3, 6)
+      ctx.stroke()
+    }
+
     ctx.restore()
   }
 
@@ -163,6 +202,8 @@ export function setupPipes(
     status.textContent = state.solved ? 'Solved! Every pipe joins up.' : ''
     status.classList.toggle('pipes-status-won', state.solved)
     undoButton.disabled = state.past.length === 0 || state.solved
+    hintButton.disabled = state.solved
+    note.textContent = hint?.kind === 'wrong-lock' ? 'This lock is wrong.' : ''
     draw()
   }
 
@@ -181,6 +222,13 @@ export function setupPipes(
     }
 
     state = next
+    hint = null
+    render()
+  }
+
+  function deal(sizeToDeal: number): void {
+    state = createGame(sizeToDeal)
+    hint = null
     render()
   }
 
@@ -218,16 +266,24 @@ export function setupPipes(
     })
   })
 
-  newButtonElement.addEventListener('click', () => {
-    state = createGame(state.size)
+  // Pick at random, so pressing Hint again gives a different tile when several are ready.
+  hintButton.addEventListener('click', () => {
+    const hints = findHints(state)
+
+    if (hints.length === 0) {
+      return
+    }
+
+    const chosen = hints[Math.floor(Math.random() * hints.length)]
+    apply(applyHint(state, chosen))
+    hint = chosen // set after apply, which clears the old one
     render()
   })
 
+  newButtonElement.addEventListener('click', () => deal(state.size))
+
   // A new size means a new puzzle. There is no way to keep the current board.
-  sizeSelect.addEventListener('change', () => {
-    state = createGame(Number(sizeSelect.value))
-    render()
-  })
+  sizeSelect.addEventListener('change', () => deal(Number(sizeSelect.value)))
 
   window.addEventListener('resize', draw)
 

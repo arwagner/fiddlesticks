@@ -1,7 +1,7 @@
 import { test, expect } from 'vitest'
 import {
   N, E, S, W, rotateCW, kindOf, lightDepths, looseEnds, isSolved, armCount,
-  newGameFromBoards, newGame, generateTree, scramble, rotate, toggleLock, undo } from './pipes-logic'
+  newGameFromBoards, newGame, generateTree, scramble, rotate, toggleLock, undo, findHints, applyHint } from './pipes-logic'
 
 test('four clockwise turns bring a tile back to where it started', () => {
   expect(rotateCW(N)).toBe(E)
@@ -179,4 +179,62 @@ test('a solved board takes no locks', () => {
   const solved = rotate(newGameFromBoards(TREE, withTurned(withTurned(withTurned(TREE, 0, 0), 0, 0), 0, 0)), 0, 0)
 
   expect(toggleLock(solved, 1, 1)).toBe(solved)
+})
+
+test('Hint flags a wrong lock before anything else', () => {
+  const state = toggleLock(newGameFromBoards(TREE, withTurned(TREE, 0, 0)), 0, 0)
+  const hints = findHints(state)
+
+  expect(hints.length).toBeGreaterThan(0)
+  expect(hints.every((hint) => hint.kind === 'wrong-lock')).toBe(true)
+  expect(hints).toContainEqual({ kind: 'wrong-lock', r: 0, c: 0 })
+  expect(applyHint(state, hints[0])).toBe(state)
+})
+
+test('Hint always has a tile to give on an unsolved board, and it gives the right rotation', () => {
+  for (let seed = 1; seed <= 40; seed += 1) {
+    const random = seeded(seed)
+    let state = newGame(7, random)
+
+    // Some correct locks first, as a player would make.
+    for (let i = 0; i < 10; i += 1) {
+      const r = Math.floor(random() * 7)
+      const c = Math.floor(random() * 7)
+      if (state.masks[r][c] === state.solution[r][c] && !state.locked[r][c]) state = toggleLock(state, r, c)
+    }
+
+    while (!state.solved) {
+      const hints = findHints(state)
+      expect(hints.length).toBeGreaterThan(0)
+
+      for (const hint of hints) {
+        expect(hint.kind).toBe('fix')
+        if (hint.kind === 'fix') {
+          expect(hint.mask).toBe(state.solution[hint.r][hint.c])
+          expect(state.locked[hint.r][hint.c]).toBe(false)
+        }
+      }
+
+      state = applyHint(state, hints[Math.floor(random() * hints.length)])
+    }
+  }
+})
+
+test('taking a hint turns and locks one tile, as one undo step', () => {
+  const state = newGameFromBoards(TREE, withTurned(withTurned(TREE, 0, 0), 2, 2)) // two off, so one hint can't finish it
+  const hint = findHints(state)[0]
+  const after = applyHint(state, hint)
+
+  if (hint.kind !== 'fix') throw new Error('expected a tile to fix')
+  expect(after.masks[hint.r][hint.c]).toBe(TREE[hint.r][hint.c])
+  expect(after.locked[hint.r][hint.c]).toBe(true)
+  expect(after.past).toHaveLength(1)
+  expect(undo(after).masks).toEqual(state.masks)
+  expect(undo(after).locked).toEqual(state.locked)
+})
+
+test('a solved board has no hints', () => {
+  const solved = rotate(newGameFromBoards(TREE, withTurned(withTurned(withTurned(TREE, 0, 0), 0, 0), 0, 0)), 0, 0)
+
+  expect(findHints(solved)).toEqual([])
 })

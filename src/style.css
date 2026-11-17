@@ -730,6 +730,13 @@ h1 {
   margin-bottom: 0.6rem;
 }
 
+.pipes-note {
+  font-size: 0.9rem;
+  color: #ffd264;
+  margin-bottom: 0.6rem;
+  min-height: 1.2rem;
+}
+
 /* A big board on a small screen scrolls sideways instead of shrinking its tiles past a comfortable tap. */
 .pipes-board {
   overflow-x: auto;

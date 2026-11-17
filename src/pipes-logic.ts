@@ -2,7 +2,7 @@
 // there is no separate rotation index. Two masks that look the same are the same: a straight turned 180°
 // is the same tile.
 
-import { isDeducible } from './pipes-solver'
+import { isDeducible, deduceRound } from './pipes-solver'
 
 export const N = 1
 export const E = 2
@@ -245,4 +245,47 @@ export function undo(state: GameState): GameState {
 
 function snapshot(state: GameState): { masks: number[][]; locked: boolean[][] } {
   return { masks: state.masks, locked: state.locked }
+}
+
+// A tile the player could work out now, or a lock that is wrong.
+export type Hint = { kind: 'wrong-lock'; r: number; c: number } | { kind: 'fix'; r: number; c: number; mask: number }
+
+// A wrong lock comes first: deductions from it would be wrong, and the player could be stuck for good.
+// Otherwise the hints are the tiles the solver fixes first, knowing only the border and the correct locks.
+export function findHints(state: GameState): Hint[] {
+  if (state.solved) {
+    return []
+  }
+
+  const wrong: Hint[] = []
+
+  state.locked.forEach((row, r) =>
+    row.forEach((locked, c) => {
+      if (locked && state.masks[r][c] !== state.solution[r][c]) {
+        wrong.push({ kind: 'wrong-lock', r, c })
+      }
+    }),
+  )
+
+  if (wrong.length > 0) {
+    return wrong
+  }
+
+  const givens = state.solution.map((row, r) => row.map((mask, c) => (state.locked[r][c] ? mask : null)))
+
+  return deduceRound(state.solution, givens).map(({ r, c, mask }) => ({ kind: 'fix' as const, r, c, mask }))
+}
+
+// A fix turns the tile into place and locks it, as one step. A wrong lock is only pointed out.
+export function applyHint(state: GameState, hint: Hint): GameState {
+  if (state.solved || hint.kind !== 'fix') {
+    return state
+  }
+
+  const masks = state.masks.map((row) => [...row])
+  const locked = state.locked.map((row) => [...row])
+  masks[hint.r][hint.c] = hint.mask
+  locked[hint.r][hint.c] = true
+
+  return { ...state, masks, locked, past: [...state.past, snapshot(state)], solved: isSolved(masks, state.source) }
 }

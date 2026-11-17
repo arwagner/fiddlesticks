@@ -276,3 +276,38 @@ export function solve(kinds: number[][], givens?: Givens): SolveResult {
 export function isDeducible(solution: number[][]): boolean {
   return solve(solution).status === 'solved'
 }
+
+// The tiles Hint may give away: the first wave the solver fixes from the givens. That is every tile that
+// becomes certain during the earliest pass in which any tile does. Like Nonogram's one-line hints, that keeps
+// a hint to a step the player could see from the board, not the end of a long chain. It is never empty while
+// a deducible board has unknown tiles, because the solver can finish the board from the border alone and
+// givens only add to what it knows.
+export function deduceRound(kinds: number[][], givens: Givens): { r: number; c: number; mask: number }[] {
+  const size = kinds.length
+  const solver = createSolver(kinds, givens)
+  let remaining = progressSignature(solver.candidates)
+
+  for (;;) {
+    const fixed = solver.pass()
+
+    if (fixed === null) {
+      return []
+    }
+
+    if (fixed.length > 0) {
+      return fixed.map((index) => ({
+        r: Math.floor(index / size),
+        c: index % size,
+        mask: solver.candidates[index][0],
+      }))
+    }
+
+    const now = progressSignature(solver.candidates)
+
+    if (now === remaining) {
+      return []
+    }
+
+    remaining = now
+  }
+}

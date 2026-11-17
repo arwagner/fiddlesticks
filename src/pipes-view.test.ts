@@ -241,3 +241,31 @@ test('clicks land on the tile under the pointer at every size and width', () => 
     }
   }
 })
+
+function note(element: HTMLElement): string {
+  return element.querySelector('#pipes-note')!.textContent ?? ''
+}
+
+test('pressing Hint enough times finishes the board, one undoable step at a time', () => {
+  const element = mount()
+  const hint = button(element, '#pipes-hint')
+
+  hint.click()
+  expect(button(element, '#pipes-undo').disabled).toBe(false)
+
+  for (let i = 0; i < 9 && !hint.disabled; i += 1) hint.click()
+
+  expect(status(element)).toMatch(/solved/i)
+  expect(hint.disabled).toBe(true) // nothing left to hint once solved
+})
+
+test('Hint points out a wrong lock before giving anything away, and the note clears on the next move', () => {
+  const element = mount()
+
+  pressTile(element, 0, 0, 2) // locks the one tile that is off
+  button(element, '#pipes-hint').click()
+  expect(note(element)).toMatch(/this lock is wrong/i)
+
+  pressTile(element, 0, 0, 2) // unlock it
+  expect(note(element)).toBe('')
+})
