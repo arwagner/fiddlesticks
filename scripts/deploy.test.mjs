@@ -29,12 +29,12 @@ describe('deployPlan', () => {
     expect(() => deployPlan({ DEPLOY_PATH: '//' })).toThrow('DEPLOY_PATH')
   })
 
-  it('points ssh at the key in DEPLOY_SSH_KEY when one is given', () => {
-    expect(deployPlan({ DEPLOY_SSH_KEY: '/tmp/key' }).rsyncArgs).toEqual([
+  it('points ssh at the key in DEPLOY_SSH_KEY, quoted so a path with spaces stays one argument', () => {
+    expect(deployPlan({ DEPLOY_SSH_KEY: '/tmp/my key' }).rsyncArgs).toEqual([
       '-az',
       '--delete',
       '-e',
-      'ssh -i /tmp/key -o IdentitiesOnly=yes',
+      'ssh -i "/tmp/my key" -o IdentitiesOnly=yes',
       'dist/',
       'root@187.124.159.132:/var/www/fiddlesticks/',
     ])

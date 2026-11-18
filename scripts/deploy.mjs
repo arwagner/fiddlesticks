@@ -27,7 +27,7 @@ export function deployPlan(env) {
   // rsync --delete into / would wipe the server.
   if (path === '/') throw new Error('DEPLOY_PATH must not be the filesystem root')
   const url = env.DEPLOY_URL || DEFAULTS.url
-  const ssh = env.DEPLOY_SSH_KEY ? ['-e', `ssh -i ${env.DEPLOY_SSH_KEY} -o IdentitiesOnly=yes`] : []
+  const ssh = env.DEPLOY_SSH_KEY ? ['-e', `ssh -i "${env.DEPLOY_SSH_KEY}" -o IdentitiesOnly=yes`] : []
   return { rsyncArgs: ['-az', '--delete', ...ssh, 'dist/', `${user}@${host}:${path}`], url }
 }
 
