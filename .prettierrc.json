@@ -2,11 +2,5 @@
   "semi": false,
   "singleQuote": true,
   "printWidth": 120,
-  "trailingComma": "all",
-  "overrides": [
-    {
-      "files": ".sandcastle/**",
-      "options": { "semi": true, "singleQuote": false, "printWidth": 80 }
-    }
-  ]
+  "trailingComma": "all"
 }

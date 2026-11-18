@@ -1,0 +1,14 @@
+# aint-farm, the software factory: what its runs check, what they run on, and which tasks it runs here.
+# Format: https://github.com/arwagner/aint-farm/blob/main/docs/factory-yml.md
+schemaVersion: 1
+checks:
+  - npm ci
+  - npm run check
+runner:
+  dockerfile: .factory/Dockerfile
+agent: claude
+tasks:
+  explore: {}
+  implement: {}
+  implement-spec: {}
+  review: {}

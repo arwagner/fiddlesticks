@@ -17,7 +17,6 @@
     "prepare": "simple-git-hooks"
   },
   "devDependencies": {
-    "@ai-hero/sandcastle": "^0.14.0",
     "@eslint/js": "^10.0.1",
     "@types/node": "^22.20.5",
     "eslint": "^10.15.0",
@@ -27,12 +26,10 @@
     "lint-staged": "^17.6.1",
     "prettier": "^3.10.1",
     "simple-git-hooks": "^2.14.0",
-    "tsx": "^4.23.15",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.73.0",
     "vite": "^8.1.0",
-    "vitest": "^4.1.10",
-    "zod": "^3.25.76"
+    "vitest": "^4.1.10"
   },
   "simple-git-hooks": {
     "pre-commit": "node_modules/.bin/lint-staged && node_modules/.bin/tsc --noEmit"
