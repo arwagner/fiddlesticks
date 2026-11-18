@@ -43,3 +43,49 @@ _Avoid_: Pin, freeze
 **Solved**:
 A board with no loose ends and every tile lit.
 _Avoid_: Complete, won
+
+## Nonogram
+
+**Cell**:
+One square of the board. It is blank until the player marks it.
+_Avoid_: Square, tile
+
+**Line**:
+One row or one column of the board.
+_Avoid_: Lane, strip
+
+**Clue**:
+The numbers beside a line: the lengths of its runs, in order.
+_Avoid_: Hint (that is the Hint button's answer), key
+
+**Run**:
+A block of consecutive filled cells in a line's solution. Each clue number is one run.
+_Avoid_: Using "run" for anything else, such as a drag across cells; Block, group
+
+**Mark**:
+What the player puts on a blank cell: fill or X. A cell can be marked once, and marks can't be undone.
+_Avoid_: Paint, set
+
+**Fill**:
+A mark that says the cell is part of the picture.
+_Avoid_: Shade, black
+
+**X**:
+A mark that says the cell is empty in the picture.
+_Avoid_: Cross, dot, blank (a blank cell is unmarked)
+
+**Mode**:
+Which mark a left click or left drag makes: Fill or X. A right click or right drag always marks X.
+_Avoid_: Tool, brush
+
+**Drag**:
+A press that moves off its start cell. It marks every cell along one line, from the start to the pointer.
+_Avoid_: Run, swipe, stroke
+
+**Mistake**:
+A mark that disagrees with the solution. It is counted, and the cell shows its true value in red.
+_Avoid_: Error, wrong move
+
+**Hint**:
+One blank cell that a single line's clue decides, and the line that proves it.
+_Avoid_: Clue, tip
