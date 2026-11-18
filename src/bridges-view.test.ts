@@ -2,7 +2,7 @@
 import { test, expect, beforeEach } from 'vitest'
 import { setupBridges, SIZES } from './bridges'
 import { makePuzzle, newGameFromBoard, pairBetween, type GameState } from './bridges-logic'
-import { drag, press, type Spot } from './gestures.test-helper'
+import { drag, hover, press, type Spot } from './gestures.test-helper'
 
 beforeEach(() => {
   document.body.innerHTML = ''
@@ -122,11 +122,26 @@ test('a preview line follows the drag and goes when it ends', () => {
 
   // Hold the press over the neighbour without letting go.
   island(element, 0)().dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, cancelable: true, buttons: 1 }))
-  document.elementFromPoint = () => island(element, 2)()
-  island(element, 2)().dispatchEvent(new MouseEvent('pointermove', { bubbles: true, cancelable: true, buttons: 1 }))
+  hover(island(element, 2), 1)
 
   expect(preview.getAttribute('visibility')).toBe('visible')
   expect([preview.getAttribute('x2'), preview.getAttribute('y2')]).toEqual(['0.5', '2.5'])
+})
+
+test('over water the preview line follows the pointer', () => {
+  const element = mount()
+  const preview = element.querySelector('#bridges-preview')!
+  // jsdom has no layout: the 3×3 board, a quarter cell of water round it, is 350 pixels square at the origin.
+  element.querySelector('#bridges-board')!.getBoundingClientRect = () => new DOMRect(0, 0, 350, 350)
+
+  island(element, 0)().dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, cancelable: true, buttons: 1 }))
+  document.elementFromPoint = () => water(element)()
+  water(element)().dispatchEvent(
+    new MouseEvent('pointermove', { bubbles: true, cancelable: true, buttons: 1, clientX: 175, clientY: 275 }),
+  )
+
+  expect(preview.getAttribute('visibility')).toBe('visible')
+  expect([preview.getAttribute('x2'), preview.getAttribute('y2')]).toEqual(['1.5', '2.5'])
 })
 
 test('tapping a bridge cycles it to two bridges, then none', () => {

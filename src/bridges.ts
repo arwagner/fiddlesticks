@@ -255,9 +255,7 @@ export function setupBridges(
         ? islandCentre(state.puzzle.islands[over])
         : boardPoint(event.clientX, event.clientY, board.getBoundingClientRect(), state.puzzle.size)
 
-    if (to) {
-      showPreview(islandCentre(from), to)
-    }
+    showPreview(islandCentre(from), to)
   })
 
   window.addEventListener('pointerup', (event) => {

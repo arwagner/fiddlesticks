@@ -14,7 +14,8 @@ export const HIT_RADIUS = 0.7
 const MARGIN = 0.25
 
 export function viewBox(size: number): string {
-  return `${-MARGIN} ${-MARGIN} ${size + 2 * MARGIN} ${size + 2 * MARGIN}`
+  const span = size + 2 * MARGIN
+  return `${-MARGIN} ${-MARGIN} ${span} ${span}`
 }
 // How far each line of a double bridge sits from the line between the islands' centres.
 const DOUBLE_OFFSET = 0.11
@@ -38,14 +39,12 @@ export function bridgeLines(puzzle: Puzzle, p: number, level: number): Segment[]
   }))
 }
 
-// A point on the page as a point on the board, or null when the board takes up no room.
-export function boardPoint(clientX: number, clientY: number, bounds: DOMRectReadOnly, size: number): Point | null {
-  if (bounds.width <= 0 || bounds.height <= 0) {
-    return null
-  }
+// A point on the page as a point on the board.
+export function boardPoint(clientX: number, clientY: number, bounds: DOMRectReadOnly, size: number): Point {
+  const span = size + 2 * MARGIN
 
   return {
-    x: ((clientX - bounds.left) / bounds.width) * (size + 2 * MARGIN) - MARGIN,
-    y: ((clientY - bounds.top) / bounds.height) * (size + 2 * MARGIN) - MARGIN,
+    x: ((clientX - bounds.left) / bounds.width) * span - MARGIN,
+    y: ((clientY - bounds.top) / bounds.height) * span - MARGIN,
   }
 }
