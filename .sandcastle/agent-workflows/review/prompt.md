@@ -5,7 +5,7 @@ Review it with the code-review skill, .agents/skills/code-review/SKILL.md:
 
 - fixed point: `origin/{{BASE_REF}}`
 - spec: /tmp/review-spec.md
-- standards: GLOSSARY.md and the conventions of the existing code in src/
+- standards: CODING_STANDARDS.md and GLOSSARY.md
 
 Check moved code with
 `git diff --color-moved=plain --color-moved-ws=allow-indentation-change origin/{{BASE_REF}}...HEAD`,
@@ -24,6 +24,10 @@ Every finding you leave becomes an inline comment on the first line it
 concerns, one comment per finding. You will be asked for them as structured
 output. Its body says what decision it needs.
 
+Every finding either sub-agent reports ends in exactly one place: a fix
+commit, a finding you leave, or a one-line dismissal under `## Dismissed` in
+the verdict, saying why. The review is done when each one is accounted for.
+
 ## The verdict
 
 Write your verdict on the branch, after your fixes, to /tmp/review-verdict.md:
@@ -35,6 +39,10 @@ Write your verdict on the branch, after your fixes, to /tmp/review-verdict.md:
     ## Spec: PASS | CHANGES REQUESTED
     One line of reasoning, then each finding you fixed.
 
+    ## Dismissed
+    Each sub-agent finding you neither fixed nor left: the finding, then why.
+    Leave the section out when there are none.
+
     ## Rules this review wanted and could not find
     Anything you wanted to fail the change for that no standard covers.
     The retro reads this list.
@@ -43,6 +51,12 @@ The workflow adds the findings you left to each section, from your structured
 output. They appear there once, not in your text.
 
 ## Evidence
+
+Drive the game with `agent-browser`, already installed with its Chrome. Run
+`agent-browser skills get agent-browser` for its commands: `open`,
+`mouse move|down|up`, `set device` for a phone, `screenshot`. Serve the app
+with `npx vite --port 5173 --strictPort &`; a game is at
+`http://localhost:5173/game.html?game=<slug>`.
 
 When your fixes change the UI, save an after screenshot of each as a PNG in
 /tmp/evidence/. Check the PR's own after state in the browser too; its before

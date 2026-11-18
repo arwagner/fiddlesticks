@@ -166,12 +166,6 @@ jobs:
       - name: Install Claude Code
         run: npm install -g @anthropic-ai/claude-code
 
-      - name: Cache agent-browser's Chrome
-        uses: actions/cache@v4
-        with:
-          path: ~/.agent-browser/browsers
-          key: agent-browser-0.27.0-${{ runner.os }}
-
       - name: Install agent-browser
         # The agent drives the app with it for screenshots and checks. Without
         # it here, each run installs it mid-session.
@@ -202,7 +196,18 @@ jobs:
           if [ -n "$(git status --porcelain)" ]; then
             echo "::warning::The review left uncommitted changes. Only its commits are pushed."
             git status --short
+            git stash push -u -q # filter-branch below needs a clean tree
           fi
+          # No AI attribution in this repo. .claude/settings.json turns it off
+          # for the agent; this catches any trailer or footer that slips past.
+          export FILTER_BRANCH_SQUELCH_WARNING=1
+          pattern='^co-authored-by: .*(claude|anthropic)'
+          if git log --format=%B "$HEAD_SHA..HEAD" | grep -qiE "$pattern"; then
+            git filter-branch -f --msg-filter "grep -viE '$pattern' || true" -- "$HEAD_SHA..HEAD"
+          fi
+          for f in /tmp/review-verdict.md; do
+            if [ -f "$f" ]; then sed -i -E '/Generated with \[?Claude Code/d' "$f"; fi
+          done
           if [ "$(git rev-parse HEAD)" = "$HEAD_SHA" ]; then
             echo "The review made no commits. Nothing to push."
             exit 0

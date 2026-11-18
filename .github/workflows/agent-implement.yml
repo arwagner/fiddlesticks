@@ -134,12 +134,6 @@ jobs:
       - name: Install Claude Code
         run: npm install -g @anthropic-ai/claude-code
 
-      - name: Cache agent-browser's Chrome
-        uses: actions/cache@v4
-        with:
-          path: ~/.agent-browser/browsers
-          key: agent-browser-0.27.0-${{ runner.os }}
-
       - name: Install agent-browser
         # The agent drives the app with it for screenshots and checks. Without
         # it here, each run installs it mid-session.
@@ -209,6 +203,16 @@ jobs:
             exit 1
           fi
           git log --oneline "$BASE..HEAD"
+          # No AI attribution in this repo. .claude/settings.json turns it off
+          # for the agent; this catches any trailer or footer that slips past.
+          export FILTER_BRANCH_SQUELCH_WARNING=1
+          pattern='^co-authored-by: .*(claude|anthropic)'
+          if git log --format=%B "$BASE..HEAD" | grep -qiE "$pattern"; then
+            git filter-branch -f --msg-filter "grep -viE '$pattern' || true" -- "$BASE..HEAD"
+          fi
+          for f in /tmp/pr-body.md; do
+            if [ -f "$f" ]; then sed -i -E '/Generated with \[?Claude Code/d' "$f"; fi
+          done
 
       - name: Push
         env:
