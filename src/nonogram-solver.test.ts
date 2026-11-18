@@ -12,8 +12,7 @@ import {
 
 const b = (pattern: string): boolean[] => [...pattern].map((char) => char === '#')
 
-const toKnown = (cell: Cell): Known =>
-  cell === 'blank' ? null : cell === 'filled' || cell === 'wrong-filled'
+const toKnown = (cell: Cell): Known => (cell === 'blank' ? null : cell === 'filled' || cell === 'wrong-filled')
 
 describe('lineArrangements', () => {
   test('a run that fills the line has one placement', () => {
@@ -101,9 +100,7 @@ describe('findHints', () => {
       expect(state.board[hint.r][hint.c]).toBe('blank')
 
       const known: Known[] =
-        hint.line === 'row'
-          ? state.board[hint.r].map(toKnown)
-          : state.board.map((row) => toKnown(row[hint.c]))
+        hint.line === 'row' ? state.board[hint.r].map(toKnown) : state.board.map((row) => toKnown(row[hint.c]))
       const clue = hint.line === 'row' ? state.rowClues[hint.r] : state.colClues[hint.index]
       const at = hint.line === 'row' ? hint.c : hint.r
 

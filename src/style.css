@@ -133,7 +133,10 @@ h1 {
   justify-content: space-between;
   gap: 0.8rem;
   background: var(--surface);
-  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease;
 }
 
 .game-link:hover {

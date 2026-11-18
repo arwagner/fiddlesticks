@@ -32,7 +32,7 @@ describe("addLeftFindings", () => {
     const result = addLeftFindings(verdict, [finding({})], []);
 
     expect(result).toContain(
-      "One line.\n\n**Left**\n\n- **Server module imports a UI component**, at `app/modules/a/lib/b.server.ts:4`\n\n## Spec: PASS"
+      "One line.\n\n**Left**\n\n- **Server module imports a UI component**, at `app/modules/a/lib/b.server.ts:4`\n\n## Spec: PASS",
     );
     expect(result).not.toContain("Move the type.");
   });
@@ -41,7 +41,7 @@ describe("addLeftFindings", () => {
     const result = addLeftFindings(verdict, [], [finding({})]);
 
     expect(result).toContain(
-      "- **Server module imports a UI component**, at `app/modules/a/lib/b.server.ts:4`\n\n  **Wrong direction.**\n\n  Move the type.\n\n## Spec: PASS"
+      "- **Server module imports a UI component**, at `app/modules/a/lib/b.server.ts:4`\n\n  **Wrong direction.**\n\n  Move the type.\n\n## Spec: PASS",
     );
   });
 
@@ -49,14 +49,14 @@ describe("addLeftFindings", () => {
     const result = addLeftFindings(
       verdict,
       [finding({ axis: "spec", title: "Scope creep" })],
-      []
+      [],
     );
 
     expect(result).toContain(
-      "## Standards: CHANGES REQUESTED\nOne line.\n\n## Spec"
+      "## Standards: CHANGES REQUESTED\nOne line.\n\n## Spec",
     );
     expect(result).toContain(
-      "Met.\n\n**Left**\n\n- **Scope creep**, at `app/modules/a/lib/b.server.ts:4`\n\n## Rules"
+      "Met.\n\n**Left**\n\n- **Scope creep**, at `app/modules/a/lib/b.server.ts:4`\n\n## Rules",
     );
   });
 
@@ -64,11 +64,11 @@ describe("addLeftFindings", () => {
     const result = addLeftFindings(
       verdict,
       [finding({ title: "Inline" })],
-      [finding({ title: "Dropped" })]
+      [finding({ title: "Dropped" })],
     );
 
     expect(result.indexOf("**Inline**")).toBeLessThan(
-      result.indexOf("**Dropped**")
+      result.indexOf("**Dropped**"),
     );
   });
 
@@ -76,7 +76,7 @@ describe("addLeftFindings", () => {
     const result = addLeftFindings("No verdict.\n", [finding({})], []);
 
     expect(result).toBe(
-      "No verdict.\n\n## Standards\n\n**Left**\n\n- **Server module imports a UI component**, at `app/modules/a/lib/b.server.ts:4`\n"
+      "No verdict.\n\n## Standards\n\n**Left**\n\n- **Server module imports a UI component**, at `app/modules/a/lib/b.server.ts:4`\n",
     );
   });
 });

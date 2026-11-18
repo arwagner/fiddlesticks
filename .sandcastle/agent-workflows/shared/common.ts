@@ -17,7 +17,7 @@ export const writeJson = (filename: string, value: unknown): void => {
   fs.mkdirSync(outputDir(), { recursive: true });
   fs.writeFileSync(
     path.join(outputDir(), filename),
-    JSON.stringify(value, null, 2)
+    JSON.stringify(value, null, 2),
   );
 };
 

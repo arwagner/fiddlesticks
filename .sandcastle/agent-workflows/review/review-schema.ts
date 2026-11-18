@@ -15,7 +15,7 @@ export const reviewSchema = z
             .string()
             .min(1)
             .describe(
-              "The finding in a few words, plain text, e.g. 'Server module imports a UI component'."
+              "The finding in a few words, plain text, e.g. 'Server module imports a UI component'.",
             ),
           path: z
             .string()
@@ -26,18 +26,18 @@ export const reviewSchema = z
             .int()
             .positive()
             .describe(
-              "A line in the file as it is now, inside a hunk of the diff against the base. A comment outside the hunks goes into the verdict instead."
+              "A line in the file as it is now, inside a hunk of the diff against the base. A comment outside the hunks goes into the verdict instead.",
             ),
           body: z
             .string()
             .min(1)
             .describe(
-              "The finding, in Markdown: the rule or spec line it breaks, why it could not be fixed here, and what to do instead."
+              "The finding, in Markdown: the rule or spec line it breaks, why it could not be fixed here, and what to do instead.",
             ),
-        })
+        }),
       )
       .describe(
-        "One entry per finding you left unfixed, on the first line it concerns. Empty is fine."
+        "One entry per finding you left unfixed, on the first line it concerns. Empty is fine.",
       ),
   })
   .describe("The review's inline comments.");

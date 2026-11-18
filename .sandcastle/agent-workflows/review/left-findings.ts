@@ -29,7 +29,7 @@ const leftList = (posted: ReviewComment[], dropped: ReviewComment[]): string =>
 export const addLeftFindings = (
   verdict: string,
   posted: ReviewComment[],
-  dropped: ReviewComment[]
+  dropped: ReviewComment[],
 ): string => {
   const sections = verdict.split(/^(?=## )/m);
 
@@ -39,7 +39,7 @@ export const addLeftFindings = (
     const list = leftList(posted.filter(ofAxis), dropped.filter(ofAxis));
 
     const index = sections.findIndex((section) =>
-      section.startsWith(HEADINGS[axis])
+      section.startsWith(HEADINGS[axis]),
     );
     if (index === -1) {
       sections.push(`\n${HEADINGS[axis]}\n\n${list}\n`);

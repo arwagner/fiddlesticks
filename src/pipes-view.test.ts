@@ -23,7 +23,14 @@ function stubCanvas(): void {
 
   HTMLCanvasElement.prototype.getContext = (() => context) as unknown as HTMLCanvasElement['getContext']
   HTMLCanvasElement.prototype.getBoundingClientRect = function boundingRect(this: HTMLCanvasElement) {
-    return { left: 0, top: 0, right: this.width, bottom: this.height, width: this.width, height: this.height } as DOMRect
+    return {
+      left: 0,
+      top: 0,
+      right: this.width,
+      bottom: this.height,
+      width: this.width,
+      height: this.height,
+    } as DOMRect
   }
 }
 

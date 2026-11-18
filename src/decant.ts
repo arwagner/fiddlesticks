@@ -61,7 +61,9 @@ function prefersReducedMotion(): boolean {
 }
 
 function optionsHtml(values: number[], chosen: number): string {
-  return values.map((value) => `<option value="${value}"${value === chosen ? ' selected' : ''}>${value}</option>`).join('')
+  return values
+    .map((value) => `<option value="${value}"${value === chosen ? ' selected' : ''}>${value}</option>`)
+    .join('')
 }
 
 export function setupDecant(

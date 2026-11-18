@@ -1,7 +1,25 @@
 import { test, expect } from 'vitest'
 import {
-  N, E, S, W, rotateCW, kindOf, lightDepths, looseEnds, isSolved, armCount,
-  newGameFromBoards, newGame, generateTree, scramble, rotate, toggleLock, undo, findHints, applyHint } from './pipes-logic'
+  N,
+  E,
+  S,
+  W,
+  rotateCW,
+  kindOf,
+  lightDepths,
+  looseEnds,
+  isSolved,
+  armCount,
+  newGameFromBoards,
+  newGame,
+  generateTree,
+  scramble,
+  rotate,
+  toggleLock,
+  undo,
+  findHints,
+  applyHint,
+} from './pipes-logic'
 
 test('four clockwise turns bring a tile back to where it started', () => {
   expect(rotateCW(N)).toBe(E)
@@ -254,7 +272,16 @@ test('a hint is one step from what the board shows, not the end of a chain', () 
 test('correct locks count straight away', () => {
   let state = newGameFromBoards(TREE, withTurned(withTurned(TREE, 0, 1), 1, 1))
 
-  for (const [r, c] of [[0, 0], [0, 2], [1, 0], [1, 2], [2, 0], [2, 1], [2, 2]]) state = toggleLock(state, r, c)
+  for (const [r, c] of [
+    [0, 0],
+    [0, 2],
+    [1, 0],
+    [1, 2],
+    [2, 0],
+    [2, 1],
+    [2, 2],
+  ])
+    state = toggleLock(state, r, c)
 
   // The centre tee's four neighbours are all locked, so it is as certain as the top tee on the border.
   expect(spots(findHints(state))).toEqual(['0,1', '1,1'])

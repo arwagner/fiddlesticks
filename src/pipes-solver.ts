@@ -293,7 +293,11 @@ export function solve(tiles: number[][], givens?: Givens): SolveResult {
       return list.length === 1 ? list[0] : null
     }),
   )
-  const status = contradiction ? 'contradiction' : masks.every((row) => row.every((mask) => mask !== null)) ? 'solved' : 'stuck'
+  const status = contradiction
+    ? 'contradiction'
+    : masks.every((row) => row.every((mask) => mask !== null))
+      ? 'solved'
+      : 'stuck'
 
   return { status, masks }
 }

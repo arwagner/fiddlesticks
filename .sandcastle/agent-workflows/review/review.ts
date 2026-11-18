@@ -45,7 +45,7 @@ const posted = found.filter(inDiff);
 const dropped = found.filter((comment) => !inDiff(comment));
 for (const { path: file, line } of dropped) {
   console.error(
-    `${file}:${line} is not in the diff: the finding goes in the verdict.`
+    `${file}:${line} is not in the diff: the finding goes in the verdict.`,
   );
 }
 

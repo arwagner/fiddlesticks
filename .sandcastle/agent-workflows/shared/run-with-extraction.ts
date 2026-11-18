@@ -24,7 +24,7 @@ export type RunWithExtractionOptions<T> = Omit<RunOptions, "output"> & {
 // toolset. The second resumes that session and asks only for the structured
 // output, so the answer is extracted from everything the first run read.
 export async function runWithExtraction<T>(
-  options: RunWithExtractionOptions<T>
+  options: RunWithExtractionOptions<T>,
 ): Promise<RunResult & { output: T }> {
   const {
     output,
@@ -49,7 +49,7 @@ export async function runWithExtraction<T>(
 
   if (!sessionId) {
     throw new Error(
-      "Cannot extract structured output because the produce run had no session id."
+      "Cannot extract structured output because the produce run had no session id.",
     );
   }
 
@@ -74,7 +74,7 @@ export async function runWithExtraction<T>(
 // substitution still applies to it.
 const appendToPrompt = (
   options: Pick<RunOptions, "prompt" | "promptFile">,
-  extractionPrompt: string
+  extractionPrompt: string,
 ): Pick<RunOptions, "prompt" | "promptFile"> => {
   const suffix = [
     "",
@@ -92,7 +92,7 @@ const appendToPrompt = (
   const promptFile = path.join(dir, path.basename(options.promptFile));
   fs.writeFileSync(
     promptFile,
-    `${fs.readFileSync(options.promptFile, "utf8")}${suffix}`
+    `${fs.readFileSync(options.promptFile, "utf8")}${suffix}`,
   );
   return { promptFile };
 };

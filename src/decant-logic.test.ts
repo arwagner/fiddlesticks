@@ -48,7 +48,16 @@ test('a pour needs the destination top to match the color being poured', () => {
 test('a pour stops at the destination rim, leaving the rest behind', () => {
   // three red on top, room for two: pour two and leave one.
   expect(pourAmount([0, 1, 1, 1], [1, 1, 1], 5)).toBe(2)
-  expect(applyPour([[0, 1, 1, 1], [1, 1, 1]], { from: 0, to: 1 }, 5)).toEqual([
+  expect(
+    applyPour(
+      [
+        [0, 1, 1, 1],
+        [1, 1, 1],
+      ],
+      { from: 0, to: 1 },
+      5,
+    ),
+  ).toEqual([
     [0, 1],
     [1, 1, 1, 1, 1],
   ])

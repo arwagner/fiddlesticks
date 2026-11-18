@@ -42,9 +42,7 @@ function slugify(value: string): string {
 function renderGames(query: string): void {
   const normalized = query.trim().toLowerCase()
   const filtered = games.filter((game) => {
-    return [game.title, game.genre, game.description].some((field) =>
-      field.toLowerCase().includes(normalized),
-    )
+    return [game.title, game.genre, game.description].some((field) => field.toLowerCase().includes(normalized))
   })
 
   resultsCount!.textContent = `${filtered.length} of ${games.length} games`

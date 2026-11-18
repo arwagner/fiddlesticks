@@ -300,7 +300,11 @@ export function setupSolitaire(container: HTMLElement): void {
       const suit = suits[foundationIndex]
       const slot = foundationRect(foundationIndex)
 
-      if (pointInRect(pointX, pointY, slot) && drag.cards.length === 1 && canPlaceOnFoundation(foundations[suit], movingTop)) {
+      if (
+        pointInRect(pointX, pointY, slot) &&
+        drag.cards.length === 1 &&
+        canPlaceOnFoundation(foundations[suit], movingTop)
+      ) {
         foundations[suit].push(movingTop)
         drag = null
         revealExposedSource(null)
@@ -317,7 +321,8 @@ export function setupSolitaire(container: HTMLElement): void {
       // feat-003/AC-4 + AC-14 (gap-002): hit-test in SCALED coordinates so drop targeting tracks the
       // drawn card positions at every responsive scale, not only at scale 1.
       const bottomY = ys.length === 0 ? layout.tableauY + layout.cardH : ys[ys.length - 1] + layout.cardH
-      const insideColumn = pointX >= x && pointX <= x + layout.cardW && pointY >= layout.tableauY && pointY <= bottomY + layout.faceupShift
+      const insideColumn =
+        pointX >= x && pointX <= x + layout.cardW && pointY >= layout.tableauY && pointY <= bottomY + layout.faceupShift
 
       if (insideColumn && canPlaceOnTableau(column, movingTop)) {
         column.push(...drag.cards)

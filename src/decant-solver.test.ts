@@ -30,7 +30,15 @@ test('the solver finds the shortest way home', () => {
 })
 
 test('a board with no legal move at all comes back unsolved', () => {
-  expect(solve([[0, 1], [1, 0]], 2)).toBeNull()
+  expect(
+    solve(
+      [
+        [0, 1],
+        [1, 0],
+      ],
+      2,
+    ),
+  ).toBeNull()
 })
 
 test('the solver gives up rather than searching forever', () => {

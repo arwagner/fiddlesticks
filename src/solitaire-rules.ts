@@ -191,9 +191,7 @@ export function pointInRect(x: number, y: number, shape: Rect): boolean {
   return x >= shape.x && x <= shape.x + shape.w && y >= shape.y && y <= shape.y + shape.h
 }
 
-export type Source =
-  | { kind: 'waste' }
-  | { kind: 'tableau'; col: number; index: number }
+export type Source = { kind: 'waste' } | { kind: 'tableau'; col: number; index: number }
 
 export type Foundations = Record<Suit, Card[]>
 
@@ -252,7 +250,12 @@ export function moveTableauToFoundation(foundations: Foundations, tableau: Card[
 
 // feat-003/AC-6: clicking a foundation auto-plays an eligible card — from the waste first, else from the
 // leftmost eligible tableau column top. Returns 'waste', the tableau column index, or null if nothing moved.
-export function autoPlayToFoundation(foundations: Foundations, waste: Card[], tableau: Card[][], suit: Suit): 'waste' | number | null {
+export function autoPlayToFoundation(
+  foundations: Foundations,
+  waste: Card[],
+  tableau: Card[][],
+  suit: Suit,
+): 'waste' | number | null {
   if (moveWasteToFoundation(foundations, waste, suit)) {
     return 'waste'
   }

@@ -114,9 +114,7 @@ export function legalMoves(bottles: Bottle[], capacity: number): Move[] {
 // split across two part-filled bottles is not finished.
 export function isSolved(bottles: Bottle[], capacity: number): boolean {
   return bottles.every(
-    (bottle) =>
-      bottle.length === 0 ||
-      (bottle.length === capacity && bottle.every((color) => color === bottle[0])),
+    (bottle) => bottle.length === 0 || (bottle.length === capacity && bottle.every((color) => color === bottle[0])),
   )
 }
 

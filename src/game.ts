@@ -25,10 +25,7 @@ type Launcher = {
 }
 
 const launchers = new Map<string, Launcher>([
-  [
-    slugify('Canvas Solitaire'),
-    { rootId: 'solitaire-root', rootClass: 'solitaire-root', setup: setupSolitaire },
-  ],
+  [slugify('Canvas Solitaire'), { rootId: 'solitaire-root', rootClass: 'solitaire-root', setup: setupSolitaire }],
   [slugify('Nonogram'), { rootId: 'nonogram-root', setup: setupNonogram }],
   [slugify('Decant'), { rootId: 'decant-root', setup: setupDecant }],
   [slugify('Pipes'), { rootId: 'pipes-root', setup: (container) => setupPipes(container) }],

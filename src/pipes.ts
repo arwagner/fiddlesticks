@@ -66,16 +66,10 @@ const ARM_ANGLE = new Map<number, number>([
 // The board sizes the player can pick. Even 15×15 deals in a few milliseconds.
 export const SIZES = [5, 7, 9, 12, 15]
 
-export function setupPipes(
-  container: HTMLElement,
-  size = 7,
-  createGame: (size: number) => GameState = newGame,
-): void {
+export function setupPipes(container: HTMLElement, size = 7, createGame: (size: number) => GameState = newGame): void {
   // Keep the starting size on the menu even when a caller asks for one that is not on the list.
   const sizes = SIZES.includes(size) ? SIZES : [...SIZES, size].sort((a, b) => a - b)
-  const options = sizes
-    .map((n) => `<option value="${n}"${n === size ? ' selected' : ''}>${n} × ${n}</option>`)
-    .join('')
+  const options = sizes.map((n) => `<option value="${n}"${n === size ? ' selected' : ''}>${n} × ${n}</option>`).join('')
 
   container.innerHTML = `
     <div class="pipes">
@@ -214,7 +208,12 @@ export function setupPipes(
     if (locked && !state.solved) {
       ctx.fillStyle = BOLT
 
-      for (const [x, y] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+      for (const [x, y] of [
+        [-1, -1],
+        [1, -1],
+        [-1, 1],
+        [1, 1],
+      ]) {
         ctx.beginPath()
         ctx.arc(x * (half - 6), y * (half - 6), 2.2, 0, 2 * Math.PI)
         ctx.fill()

@@ -1,13 +1,5 @@
 import { test, expect } from 'vitest'
-import {
-  shelfLayout,
-  bottleRect,
-  bandRect,
-  bottleAt,
-  boardSize,
-  BOTTLE_W,
-  MIN_PER_ROW,
-} from './decant-layout'
+import { shelfLayout, bottleRect, bandRect, bottleAt, boardSize, BOTTLE_W, MIN_PER_ROW } from './decant-layout'
 
 const WIDE = 1200
 const NARROW = 320
