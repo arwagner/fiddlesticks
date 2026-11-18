@@ -9,11 +9,17 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "deploy": "npm run build && rsync -az --delete dist/ root@187.124.159.132:/var/www/fiddlesticks/"
+    "deploy": "npm run build && rsync -az --delete dist/ root@187.124.159.132:/var/www/fiddlesticks/",
+    "check": "npm run build && npm run test"
   },
   "devDependencies": {
+    "@ai-hero/sandcastle": "^0.14.0",
+    "@types/node": "^22.20.5",
+    "jsdom": "^31.0.1",
+    "tsx": "^4.23.15",
     "typescript": "~6.0.2",
     "vite": "^8.1.0",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "zod": "^3.25.76"
   }
 }
