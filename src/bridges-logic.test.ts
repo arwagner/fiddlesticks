@@ -36,7 +36,7 @@ function seeded(seed: number): () => number {
 //   1 . 1
 //   . . .
 //   2 . 2
-// The top two can't join each other, or they'd be closed off, so the only answer is a U.
+// The top two can't join each other, or they'd be closed off, so the only solution is a U.
 const SQUARE: Island[] = [
   { row: 0, col: 0, count: 1 },
   { row: 0, col: 2, count: 1 },
@@ -55,7 +55,7 @@ function levelsOf(entries: [number, number][], pairs = square.pairs.length): num
   return levels
 }
 
-const ANSWER = levelsOf([
+const SOLUTION = levelsOf([
   [LEFT, 1],
   [RIGHT, 1],
   [BOTTOM, 1],
@@ -110,11 +110,11 @@ test('an island is done at its count and over past it', () => {
 
   expect(bridgeCounts(square, levels)).toEqual([3, 2, 1, 0])
   expect(islandStatuses(square, levels)).toEqual(['over', 'over', 'open', 'open'])
-  expect(islandStatuses(square, ANSWER)).toEqual(['done', 'done', 'done', 'done'])
+  expect(islandStatuses(square, SOLUTION)).toEqual(['done', 'done', 'done', 'done'])
 })
 
 test('solved needs every island done and every island connected', () => {
-  expect(isSolved(square, ANSWER)).toBe(true)
+  expect(isSolved(square, SOLUTION)).toBe(true)
 
   // Every island done, but in two separate groups.
   const twoGroups = makePuzzle(5, [
@@ -130,7 +130,7 @@ test('solved needs every island done and every island connected', () => {
 })
 
 test('a move cycles a pair 0, 1, 2 and back to 0, each one undoable', () => {
-  const dealt = newGameFromBoard(square, ANSWER)
+  const dealt = newGameFromBoard(square, SOLUTION)
   const one = cycle(dealt, TOP)
   const two = cycle(one, TOP)
   const none = cycle(two, TOP)
@@ -142,7 +142,7 @@ test('a move cycles a pair 0, 1, 2 and back to 0, each one undoable', () => {
 })
 
 test('undo with nothing to take back changes nothing', () => {
-  const dealt = newGameFromBoard(square, ANSWER)
+  const dealt = newGameFromBoard(square, SOLUTION)
 
   expect(undo(dealt)).toBe(dealt)
 })
@@ -154,7 +154,7 @@ test('a bridge that would cross another is refused, returning the same state', (
 })
 
 test('the last bridge solves the board, and then it takes no more moves or undos', () => {
-  let state = newGameFromBoard(square, ANSWER)
+  let state = newGameFromBoard(square, SOLUTION)
   state = cycle(cycle(state, LEFT), RIGHT)
   expect(state.solved).toBe(false)
 
@@ -164,7 +164,7 @@ test('the last bridge solves the board, and then it takes no more moves or undos
   expect(undo(state)).toBe(state)
 })
 
-test('a grown board keeps islands apart, counts every bridge, and its answer is solved', () => {
+test('a grown board keeps islands apart, counts every bridge, and its solution is solved', () => {
   for (const size of [7, 10, 13]) {
     for (let seed = 1; seed <= 20; seed += 1) {
       const { puzzle, solution } = growBoard(size, seeded(seed * size))
@@ -225,22 +225,22 @@ test('a deal at every size takes well under a second', () => {
   }
 })
 
-test('Hint points out a pair with more bridges than the answer, and changes nothing', () => {
-  const state = cycle(newGameFromBoard(square, ANSWER), TOP)
+test('Hint points out a pair with more bridges than the solution, and changes nothing', () => {
+  const state = cycle(newGameFromBoard(square, SOLUTION), TOP)
   const hints = findHints(state)
 
   expect(hints).toEqual([{ type: 'wrong', pair: TOP }])
   expect(applyHint(state, hints[0])).toBe(state)
 })
 
-test('a pair with fewer bridges than the answer is short, not wrong', () => {
+test('a pair with fewer bridges than the solution is short, not wrong', () => {
   const lShape = makePuzzle(3, [
     { row: 0, col: 0, count: 2 },
     { row: 2, col: 0, count: 3 },
     { row: 2, col: 2, count: 1 },
   ])
   const left = pairBetween(lShape, 0, 1)
-  // The answer: two bridges down the left and one along the bottom. One bridge down the left is short.
+  // The solution: two bridges down the left and one along the bottom. One bridge down the left is short.
   const state = cycle(newGameFromBoard(lShape, [2, 1]), left)
 
   expect(findHints(state).map((hint) => hint.type)).not.toContain('wrong')
@@ -248,12 +248,12 @@ test('a pair with fewer bridges than the answer is short, not wrong', () => {
 })
 
 test('Hint settles one pair as one undoable step, and enough of them solve the board', () => {
-  let state = newGameFromBoard(square, ANSWER)
+  let state = newGameFromBoard(square, SOLUTION)
   const first = findHints(state)[0]
 
   state = applyHint(state, first)
   expect(state.past).toHaveLength(1)
-  expect(state.levels[first.pair]).toBe(ANSWER[first.pair])
+  expect(state.levels[first.pair]).toBe(SOLUTION[first.pair])
 
   for (let i = 0; i < 4 && !state.solved; i += 1) state = applyHint(state, findHints(state)[0])
 

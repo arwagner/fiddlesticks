@@ -15,7 +15,7 @@ function seeded(seed: number): () => number {
 }
 
 // An independent check: try every level on every pair, cutting off a branch once an island goes over, and
-// count the answers that are solved.
+// count the solutions that are solved.
 function countSolutions(puzzle: Puzzle, stopAt = 2): number {
   const levels = puzzle.pairs.map(() => 0)
   const used = puzzle.islands.map(() => 0)
@@ -60,7 +60,7 @@ const SQUARE = makePuzzle(3, [
   { row: 2, col: 2, count: 2 },
 ])
 
-test('a 1 never joins a 1 while other islands are left, so the square has one answer', () => {
+test('a 1 never joins a 1 while other islands are left, so the square has one solution', () => {
   const result = solve(SQUARE)
 
   expect(result.status).toBe('solved')
@@ -73,7 +73,7 @@ test('two 2s never take a double bridge between them while other islands are lef
   //   2 . 2
   //   . . .
   //   3 . 3
-  // That leaves two answers, so the solver gets stuck rather than guessing.
+  // That leaves two solutions, so the solver gets stuck rather than guessing.
   const puzzle = makePuzzle(3, [
     { row: 0, col: 0, count: 2 },
     { row: 0, col: 2, count: 2 },
@@ -140,7 +140,7 @@ test('a pair that must have a bridge rules out the pairs crossing it', () => {
   expect(solve(PLUS, givens).upper[down]).toBe(0)
 })
 
-test('a board with no answer is a contradiction', () => {
+test('a board with no solution is a contradiction', () => {
   expect(solve(PLUS).status).toBe('contradiction')
 })
 
@@ -164,7 +164,7 @@ test('givens are a floor: a pair given one bridge can still be found to need two
   expect(result.settledOnPass[left]).toBeGreaterThan(0)
 })
 
-test('whenever the solver solves a grown board, its answer is the one grown and the only one', () => {
+test('whenever the solver solves a grown board, its solution is the one grown and the only one', () => {
   let solved = 0
 
   for (let seed = 1; seed <= 40; seed += 1) {
@@ -176,14 +176,14 @@ test('whenever the solver solves a grown board, its answer is the one grown and 
       expect(result.lower).toEqual(solution)
       expect(countSolutions(puzzle)).toBe(1)
     } else {
-      expect(result.status).toBe('stuck') // a grown board always has an answer
+      expect(result.status).toBe('stuck') // a grown board always has a solution
     }
   }
 
   expect(solved).toBeGreaterThan(10)
 })
 
-test('the solver never contradicts a grown board’s own answer, at any size', () => {
+test('the solver never contradicts a grown board’s own solution, at any size', () => {
   for (const size of [10, 13]) {
     for (let seed = 1; seed <= 20; seed += 1) {
       const { puzzle, solution } = growBoard(size, seeded(seed))

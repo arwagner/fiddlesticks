@@ -1,6 +1,6 @@
 // Solves a Bridges puzzle by deduction alone, with no guessing (no DOM). For each neighbour pair it keeps
 // the least and the most bridges the pair can have, from 0 to 2, and tightens them until a whole pass
-// changes nothing. Settling every pair this way proves the answer is the only one, so answers are never
+// changes nothing. Settling every pair this way proves the solution is the only one, so solutions are never
 // counted. Simon Tatham's bridges.c works the same way.
 
 import { MAX_LEVEL, bridgeCounts, connectedGroups, isSolved, type Puzzle } from './bridges-logic'

@@ -11,15 +11,15 @@ beforeEach(() => {
 //   1 . 1
 //   . . .
 //   2 . 2
-// The answer is a U: one bridge down each side and one along the bottom.
+// The solution is a U: one bridge down each side and one along the bottom.
 const SQUARE = makePuzzle(3, [
   { row: 0, col: 0, count: 1 },
   { row: 0, col: 2, count: 1 },
   { row: 2, col: 0, count: 2 },
   { row: 2, col: 2, count: 2 },
 ])
-const ANSWER = SQUARE.pairs.map(({ a, b }) => (a === 0 && b === 1 ? 0 : 1))
-const square = (): GameState => newGameFromBoard(SQUARE, ANSWER)
+const SOLUTION = SQUARE.pairs.map(({ a, b }) => (a === 0 && b === 1 ? 0 : 1))
+const square = (): GameState => newGameFromBoard(SQUARE, SOLUTION)
 
 // A bridge across and a bridge down that would cross in the middle.
 const PLUS = makePuzzle(5, [
@@ -204,7 +204,7 @@ test('the last bridge solves the board, and then the board ignores drags, taps, 
 
   drag([island(element, 0), island(element, 1)])
   press(bridge(element, LEFT))
-  expect(drawn(element)).toEqual(ANSWER)
+  expect(drawn(element)).toEqual(SOLUTION)
 })
 
 test('Undo is off at the deal, and takes back the last action', () => {

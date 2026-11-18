@@ -133,7 +133,7 @@ export function blockers(puzzle: Puzzle, levels: number[], p: number): number[] 
   return puzzle.crossings[p].filter((q) => levels[q] > 0)
 }
 
-// Checked against the rules, not against the stored answer.
+// Checked against the rules, not against the stored solution.
 export function isSolved(puzzle: Puzzle, levels: number[]): boolean {
   return (
     islandStatuses(puzzle, levels).every((status) => status === 'done') &&
@@ -228,7 +228,7 @@ export function growBoard(size: number, random: () => number): Board {
   return { puzzle, solution }
 }
 
-// A board the player can finish by deduction alone, which also makes its answer the only one. If every
+// A board the player can finish by deduction alone, which also makes its solution the only one. If every
 // attempt fails this returns the last board, which may need a guess.
 export function generateSolvableBoard(size: number, random: () => number, maxAttempts = 100): Board {
   let board = growBoard(size, random)
@@ -288,11 +288,11 @@ export function undo(state: GameState): GameState {
   return { ...state, levels: previous, past: state.past.slice(0, -1) }
 }
 
-// A pair with more bridges than the answer, or one the player could settle now.
+// A pair with more bridges than the solution, or one the player could settle now.
 export type Hint = { type: 'wrong'; pair: number } | { type: 'fix'; pair: number; level: number }
 
 // Too many bridges on a pair come first: the solver would work from them and go wrong. A pair with fewer
-// bridges than the answer is short, not wrong, so the current levels go to the solver as the least each
+// bridges than the solution is short, not wrong, so the current levels go to the solver as the least each
 // pair has. The hints are the pairs it settles on its earliest pass, at a level they don't have yet.
 export function findHints(state: GameState): Hint[] {
   if (state.solved) {

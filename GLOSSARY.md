@@ -97,7 +97,7 @@ A circle on the board with a count in it. Every other cell is water.
 _Avoid_: Node, dot, circle
 
 **Count**:
-The number on an island: how many bridges touch it in the answer, from 1 to 8.
+The number on an island: how many bridges touch it in the solution, from 1 to 8.
 _Avoid_: Number, clue (that is Nonogram's), value
 
 **Neighbour**:
@@ -131,6 +131,6 @@ A board where every island is done and bridges connect every island into one gro
 _Avoid_: Complete, won
 
 **Hint**:
-Either one pair with more bridges than the answer, pointed out and left as it is, or one pair the solver can
+Either one pair with more bridges than the solution, pointed out and left as it is, or one pair the solver can
 settle from the bridges already laid, set to its level.
 _Avoid_: Tip, clue
