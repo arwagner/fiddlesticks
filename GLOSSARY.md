@@ -89,3 +89,48 @@ _Avoid_: Error, wrong move
 **Hint**:
 One blank cell that a single line's clue decides, and the line that proves it.
 _Avoid_: Clue, tip
+
+## Bridges
+
+**Island**:
+A circle on the board with a count in it. Every other cell is water.
+_Avoid_: Node, dot, circle
+
+**Count**:
+The number on an island: how many bridges touch it in the answer, from 1 to 8.
+_Avoid_: Number, clue (that is Nonogram's), value
+
+**Neighbour**:
+An island in the same row or column as another, with only water between them. Bridges only join
+neighbours.
+_Avoid_: Adjacent (neighbours can be far apart), link
+
+**Pair**:
+Two neighbours, and the place a bridge between them would go.
+_Avoid_: Edge, connection
+
+**Bridge**:
+A straight line joining a pair. A pair has 0, 1 or 2 bridges, drawn as no line, one line or a double line.
+Bridges never cross each other or pass over an island.
+_Avoid_: Link, edge, line (on its own)
+
+**Level**:
+How many bridges a pair has: 0, 1 or 2.
+_Avoid_: Weight, width
+
+**Done island**:
+An island touched by exactly its count of bridges. It is drawn in the calm done colour.
+_Avoid_: Full, complete, satisfied
+
+**Over island**:
+An island touched by more bridges than its count. It is flagged in the warning colour.
+_Avoid_: Overfull, broken
+
+**Solved**:
+A board where every island is done and bridges connect every island into one group.
+_Avoid_: Complete, won
+
+**Hint**:
+Either one pair with more bridges than the answer, pointed out and left as it is, or one pair the solver can
+settle from the bridges already laid, set to its level.
+_Avoid_: Tip, clue

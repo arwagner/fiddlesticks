@@ -21,4 +21,9 @@ export const games: GameItem[] = [
     genre: 'Puzzle',
     description: 'Rotate the tiles until every pipe joins up and the whole network lights from the source.',
   },
+  {
+    title: 'Bridges',
+    genre: 'Puzzle',
+    description: 'Join the islands. Each number says how many bridges touch it.',
+  },
 ]
