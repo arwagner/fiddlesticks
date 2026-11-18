@@ -109,8 +109,9 @@ script's header lists the defaults.
 
 ## 5) Deploy on every merge to main
 
-A workflow at `.github/workflows/deploy.yml` runs the checks on each push to `main` and, when they pass, runs
-`scripts/deploy.mjs`. It needs two repository secrets:
+The workflow below, committed as `.github/workflows/deploy.yml`, runs the checks on each push to `main` and,
+when they pass, builds and runs `scripts/deploy.mjs`. It is not in the repository yet: a maintainer adds it. It
+needs two repository secrets:
 
 - `DEPLOY_SSH_KEY`: a private key whose public half is in the deploy user's `~/.ssh/authorized_keys` on the VPS.
 - `DEPLOY_KNOWN_HOSTS`: the VPS's host key lines, from `ssh-keyscan 187.124.159.132`.
@@ -150,7 +151,7 @@ jobs:
           printf '%s\n' "$KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           printf '%s\n' "$KNOWN_HOSTS" >> ~/.ssh/known_hosts
-      - run: DEPLOY_SSH_KEY="$HOME/.ssh/deploy_key" node scripts/deploy.mjs
+      - run: DEPLOY_SSH_KEY="$HOME/.ssh/deploy_key" npm run deploy
 ```
 
 The live check needs nginx to answer `https://fiddlesticks.vawagners.cloud/`: set `server_name` to that domain

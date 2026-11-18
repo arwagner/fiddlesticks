@@ -1,5 +1,6 @@
 // Deploys the built site (dist/) to the VPS, then checks the live site serves this build.
-// Run after `npm run build`: `node scripts/deploy.mjs`. CI runs it on every push to main.
+// Run after `npm run build`: `node scripts/deploy.mjs`. The deploy workflow in DEPLOYMENT.md step 5
+// runs it on every push to main, once a maintainer adds that workflow to .github/.
 //
 // Settings come from the environment, defaulting to the production VPS:
 //   DEPLOY_USER, DEPLOY_HOST  who and where to rsync to (root, 187.124.159.132)
