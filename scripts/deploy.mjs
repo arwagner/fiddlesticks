@@ -24,6 +24,8 @@ export function deployPlan(env) {
   const host = env.DEPLOY_HOST || DEFAULTS.host
   // The trailing slash makes rsync copy dist's contents, not a dist/ directory, into the web root.
   const path = (env.DEPLOY_PATH || DEFAULTS.path).replace(/\/*$/, '/')
+  // rsync --delete into / would wipe the server.
+  if (path === '/') throw new Error('DEPLOY_PATH must not be the filesystem root')
   const url = env.DEPLOY_URL || DEFAULTS.url
   const ssh = env.DEPLOY_SSH_KEY ? ['-e', `ssh -i ${env.DEPLOY_SSH_KEY} -o IdentitiesOnly=yes`] : []
   return { rsyncArgs: ['-az', '--delete', ...ssh, 'dist/', `${user}@${host}:${path}`], url }

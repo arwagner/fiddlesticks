@@ -24,6 +24,11 @@ describe('deployPlan', () => {
     expect(deployPlan({ DEPLOY_PATH: '/srv/site//' }).rsyncArgs.at(-1)).toBe('root@187.124.159.132:/srv/site/')
   })
 
+  it('refuses the filesystem root as the web root, since rsync --delete would wipe the server', () => {
+    expect(() => deployPlan({ DEPLOY_PATH: '/' })).toThrow('DEPLOY_PATH')
+    expect(() => deployPlan({ DEPLOY_PATH: '//' })).toThrow('DEPLOY_PATH')
+  })
+
   it('points ssh at the key in DEPLOY_SSH_KEY when one is given', () => {
     expect(deployPlan({ DEPLOY_SSH_KEY: '/tmp/key' }).rsyncArgs).toEqual([
       '-az',
