@@ -31,9 +31,7 @@ export function setupNonogram(
 ): void {
   // Keep the starting size on the menu even when a caller asks for one that is not on the list.
   const sizes = SIZES.includes(size) ? SIZES : [...SIZES, size].sort((a, b) => a - b)
-  const options = sizes
-    .map((n) => `<option value="${n}"${n === size ? ' selected' : ''}>${n} × ${n}</option>`)
-    .join('')
+  const options = sizes.map((n) => `<option value="${n}"${n === size ? ' selected' : ''}>${n} × ${n}</option>`).join('')
 
   container.innerHTML = `
     <div class="nonogram">
@@ -161,7 +159,8 @@ export function setupNonogram(
       return
     }
 
-    drag = { start, intent: event.button === 2 ? 'x' : mode, axis: null }
+    // A Mac Ctrl-click is a right-click, but its pointer events say button 0.
+    drag = { start, intent: event.button === 2 || event.ctrlKey ? 'x' : mode, axis: null }
   })
 
   grid.addEventListener('pointermove', (event) => {
@@ -176,9 +175,7 @@ export function setupNonogram(
     }
 
     // A touch keeps sending its events to the cell it started on, so ask what is under the finger instead.
-    // jsdom has no elementFromPoint, and there the target is the cell under the pointer anyway.
-    const under = document.elementFromPoint ? document.elementFromPoint(event.clientX, event.clientY) : event.target
-    const to = cellPos(under)
+    const to = cellPos(document.elementFromPoint(event.clientX, event.clientY))
 
     if (!to) {
       return
