@@ -88,14 +88,16 @@ export function solve(puzzle: Puzzle, givens: number[] = puzzle.pairs.map(() => 
       }
     })
 
-    // Isolation: one more bridge on a pair can't be the one that closes off a group of islands.
+    // Isolation: a pair stays below the first level that would close off a group of islands. Trying every
+    // level, not just one more bridge, catches two 2s as well as two 1s.
     pairs.forEach((_, p) => {
-      if (lower[p] < upper[p]) {
+      for (let level = lower[p] + 1; level <= upper[p]; level += 1) {
         const levels = [...lower]
-        levels[p] += 1
+        levels[p] = level
 
         if (closesOff(levels)) {
-          cap(p, lower[p])
+          cap(p, level - 1)
+          break
         }
       }
     })

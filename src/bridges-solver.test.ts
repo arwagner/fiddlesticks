@@ -87,6 +87,24 @@ test('two 2s never take a double bridge between them while other islands are lef
   expect(countSolutions(puzzle)).toBe(2)
 })
 
+test('two 2s never take a double bridge between them, even before any other rule bounds the pair', () => {
+  //   2 . 2
+  //   . . .
+  //   2 . 2
+  // A double bridge on any side would close off two done islands, so every side has one bridge.
+  const puzzle = makePuzzle(3, [
+    { row: 0, col: 0, count: 2 },
+    { row: 0, col: 2, count: 2 },
+    { row: 2, col: 0, count: 2 },
+    { row: 2, col: 2, count: 2 },
+  ])
+  const result = solve(puzzle)
+
+  expect(result.status).toBe('solved')
+  expect(result.lower).toEqual(puzzle.pairs.map(() => 1))
+  expect(countSolutions(puzzle)).toBe(1)
+})
+
 test('an island’s count forces bridges when its other pairs can’t make it up', () => {
   //   1 . 3 . .
   //   . . . . .
