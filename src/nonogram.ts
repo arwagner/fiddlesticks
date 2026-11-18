@@ -131,6 +131,11 @@ export function setupNonogram(
   }
 
   function markAt(event: Event, intent: Intent): void {
+    // The drag already marked its line. This is the click or contextmenu the browser sends as it ends.
+    if (dragMoved) {
+      return
+    }
+
     const at = cellPos(event.target)
 
     if (at) {
@@ -143,6 +148,11 @@ export function setupNonogram(
   // A drag marks every cell it crosses along one row or column. A press that stays on one cell is left to
   // the click and contextmenu handlers, so a plain click still marks exactly one cell.
   let drag: { start: CellPos; intent: Intent; axis: LineKind | null } | null = null
+
+  // Set once a drag leaves its start cell, and kept after it ends: Windows sends the contextmenu when the right
+  // button comes up, and a left drag can end in a click, both at whatever cell the pointer was let go over.
+  // Neither may mark a cell off the line. The next press or key clears it.
+  let dragMoved = false
 
   grid.addEventListener('pointerdown', (event) => {
     const start = cellPos(event.target)
@@ -181,6 +191,8 @@ export function setupNonogram(
       return
     }
 
+    dragMoved = true
+
     commit(applyMarks(state, dragCells(drag.start, to, drag.axis), drag.intent))
   })
 
@@ -190,6 +202,19 @@ export function setupNonogram(
   }
   window.addEventListener('pointerup', endDrag)
   window.addEventListener('pointercancel', endDrag)
+
+  const clearDragMoved = () => {
+    dragMoved = false
+  }
+  window.addEventListener('pointerdown', clearDragMoved)
+  window.addEventListener('keydown', clearDragMoved)
+
+  // A right-drag let go off the board must not open the browser menu there either.
+  window.addEventListener('contextmenu', (event) => {
+    if (dragMoved) {
+      event.preventDefault()
+    }
+  })
 
   // A right-click always marks an X, whatever the mode buttons say. The mode itself does not change.
   grid.addEventListener('contextmenu', (event) => {

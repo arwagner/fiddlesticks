@@ -333,3 +333,56 @@ test('a drag across a solved board leaves it alone', () => {
 
   expect(el.querySelector('#nono-grid')!.innerHTML).toBe(before)
 })
+
+// Windows sends the contextmenu when the right button comes up, at the cell under the pointer, and a left
+// drag can end in a click on whatever cell it was let go over.
+test('the click or contextmenu that follows a drag marks nothing more', () => {
+  const el = mount()
+
+  dragAcross(el, [
+    [1, 0],
+    [1, 1],
+  ], 2)
+  const menu = new MouseEvent('contextmenu', { bubbles: true, cancelable: true, button: 2 })
+  cell(el, 3, 1).dispatchEvent(menu) // let go off the line
+  cell(el, 3, 2).click()
+
+  expect(menu.defaultPrevented).toBe(true)
+  expect(cell(el, 3, 1).classList.contains('nono-blank')).toBe(true)
+  expect(cell(el, 3, 2).classList.contains('nono-blank')).toBe(true)
+})
+
+test('a right-drag let go off the board still keeps the browser menu away', () => {
+  const el = mount()
+
+  dragAcross(el, [
+    [1, 0],
+    [1, 1],
+  ], 2)
+  const menu = new MouseEvent('contextmenu', { bubbles: true, cancelable: true, button: 2 })
+  document.body.dispatchEvent(menu)
+
+  expect(menu.defaultPrevented).toBe(true)
+})
+
+test('the next press or key after a drag marks as usual', () => {
+  const el = mount()
+
+  dragAcross(el, [
+    [1, 0],
+    [1, 1],
+  ], 2)
+  pointer('pointerdown', cell(el, 3, 1))
+  pointer('pointerup', cell(el, 3, 1), 0, 0)
+  cell(el, 3, 1).click()
+
+  dragAcross(el, [
+    [0, 1],
+    [0, 2],
+  ], 2)
+  cell(el, 3, 3).dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+  cell(el, 3, 3).click()
+
+  expect(cell(el, 3, 1).classList.contains('nono-blank')).toBe(false)
+  expect(cell(el, 3, 3).classList.contains('nono-blank')).toBe(false)
+})
