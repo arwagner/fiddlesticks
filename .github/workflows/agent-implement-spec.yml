@@ -5,8 +5,7 @@ name: Agent — Implement A Spec
 #
 # Everything before this ran once, on one ticket, because a person put a label
 # on it. This one takes a *spec*, turns it into a queue of tickets, and then
-# works the queue on its own until there is nothing left in it — and if nobody
-# ever labels anything, a clock starts it anyway.
+# works the queue on its own until there is nothing left in it.
 #
 # There are two loops here, and they are different loops. Keep them apart in
 # your head while you read:
@@ -23,7 +22,7 @@ name: Agent — Implement A Spec
 #
 # THE SHAPE, AS A PICTURE
 #
-#   label / cron / self-dispatch
+#   label / button / self-dispatch
 #             │
 #             ▼
 #        ┌─────────┐   no queue yet    ┌───────────┐
@@ -76,7 +75,7 @@ name: Agent — Implement A Spec
 #                               match.
 #   The `agent:implement-spec` label. A fresh clone of this repository does
 #     not have it, and no workflow can create the label that starts it. Create
-#     it once (the cron and the button need no label):
+#     it once (the button needs no label):
 #       gh label create "agent:implement-spec" --color 5319E7 \
 #         --description "Work this spec through the implement-spec queue"
 # ═══════════════════════════════════════════════════════════════════════════
@@ -86,23 +85,14 @@ on:
   issues:
     types: [labeled]
 
-  # 2. The clock. Every fifteen minutes it looks at the queue and moves it on
-  #    one ticket, whether or not anyone asked. This is the trigger that makes
-  #    the factory a thing that runs rather than a thing you run: the queue
-  #    drains overnight and you read pull requests in the morning.
-  #
-  #    Two honest caveats, because they will bite you on the day:
-  #      • GitHub schedules are best-effort. A `*/15` cron on a busy hour can
-  #        land several minutes late, and the top of the hour is the worst slot
-  #        there is. Do not stand in front of a camera waiting for :00.
-  #      • GitHub disables scheduled workflows in a repository with no commits
-  #        for sixty days, and emails the owner. A quiet repo stops on its own.
-  schedule:
-    - cron: "*/15 * * * *"
-
-  # 3. The button, and the chain. `workflow_dispatch` is how a human starts it
+  # 2. The button, and the chain. `workflow_dispatch` is how a human starts it
   #    without labelling anything — and it is how the `chain` job at the bottom
   #    starts the next ticket. One trigger, two callers.
+  #
+  #    There is no clock. If the chain stops — every open ticket is parked, or
+  #    a run died before it could dispatch the next — nothing restarts it. Take
+  #    `agent:blocked` off what you fixed, then press the button:
+  #      gh workflow run agent-implement-spec.yml
   workflow_dispatch:
     inputs:
       spec_issue:
@@ -118,7 +108,7 @@ permissions:
 # One run of this workflow at a time, repo-wide, and never cancelled. The queue
 # is shared state: two runs at once would both pick the same frontier ticket
 # and build it twice. `cancel-in-progress: false` matters just as much — a
-# cron tick must not kill a build that is halfway through.
+# label or button run must not kill a build that is halfway through.
 #
 # Only the runs that can do something join that group. Every label on every
 # issue starts this workflow, and the factory's own labels do too now that
@@ -134,10 +124,9 @@ concurrency:
 jobs:
   # ── survey ────────────────────────────────────────────────────────────────
   # Reads the queue and decides what this run is. No agent, no checkout of
-  # consequence — just `gh` and `jq`, so it is cheap enough to run every
-  # fifteen minutes forever.
+  # consequence — just `gh` and `jq`.
   survey:
-    # Label runs are filtered here; cron and dispatch runs carry no label and
+    # Label runs are filtered here; dispatch runs carry no label and
     # fall through.
     if: >-
       github.event_name != 'issues' ||
@@ -167,7 +156,7 @@ jobs:
           set -euo pipefail
 
           # 1. Which spec are we working? The trigger may have named one. A
-          #    cron tick did not, so find the open issue that is labelled as
+          #    bare button press did not, so find the open issue that is labelled as
           #    the live spec.
           spec="${REQUESTED_SPEC:-}"
           if [ -z "$spec" ]; then
@@ -213,7 +202,7 @@ jobs:
           # `agent:blocked` is the label the implement job puts on a ticket it
           # could not finish. Such a ticket stays OPEN on purpose — a failure
           # must not drain silently out of the queue — so without this filter
-          # every cron tick picks the same broken ticket, forever. Parked means
+          # every run picks the same broken ticket, forever. Parked means
           # out of the frontier until a person takes the label off.
           ticket=$(jq -r --argjson closed "$closed_positions" '
             [ .[]
@@ -237,7 +226,7 @@ jobs:
             else
               # Open tickets exist but every one is blocked. That is a cycle
               # or a ticket waiting on a human, and either way looping on it
-              # would burn a run every fifteen minutes forever.
+              # would burn runs forever.
               echo "::warning::Spec #$spec has $open_count open tickets and none are unblocked."
               echo "mode=drained" >> "$GITHUB_OUTPUT"
             fi
@@ -423,7 +412,7 @@ jobs:
 
 
       - name: Claim the ticket
-        # Moving the label first is what stops a cron tick that lands during a
+        # Moving the label first is what stops a run that starts during a
         # long build from picking the same ticket up again.
         env:
           GH_TOKEN: ${{ secrets.FACTORY_PAT }}
@@ -611,7 +600,7 @@ jobs:
   # implement job parks a ticket it could not finish with `agent:blocked`, and
   # `survey` skips a parked ticket, so the next run moves on to a different one
   # instead of rebuilding the failure. Without that filter this `always()` would
-  # be an infinite retry of the same broken ticket, with a cron on top of it.
+  # be an infinite retry of the same broken ticket.
   chain:
     needs: [survey, decompose, implement]
     if: |
