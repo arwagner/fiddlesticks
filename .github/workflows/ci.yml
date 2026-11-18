@@ -1,0 +1,30 @@
+name: CI
+
+# The repo's own checks, on every pull request and every push to main:
+# lint and format (ESLint, Prettier), typecheck and build, then the tests.
+# The factory's agents run `npm run check` themselves; this is the check that
+# does not take their word for it, and it re-runs after the reviewer pushes.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check
