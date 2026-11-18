@@ -5,6 +5,12 @@ import { deduceLine, isLineSolvable, type Known } from './nonogram-solver'
 // 'wrong-filled' / 'wrong-x' hold the CORRECT value for a cell the player marked wrong — rendered red.
 export type Cell = 'blank' | 'filled' | 'x' | 'wrong-filled' | 'wrong-x'
 
+// What the player means a mark to be: a filled cell or an X.
+export type Intent = 'fill' | 'x'
+
+// A row or a column of the board.
+export type LineKind = 'row' | 'column'
+
 export type GameState = {
   size: number
   solution: boolean[][] // true = a filled cell in the answer
@@ -131,7 +137,7 @@ function cloneBoard(board: Cell[][]): Cell[][] {
 export type Hint = {
   r: number
   c: number
-  line: 'row' | 'column'
+  line: LineKind
   index: number // the row or column number, counted from 0
 }
 
@@ -200,7 +206,7 @@ function autoXLine(solution: boolean[][], board: Cell[][], cells: Array<[number,
 // feat-004/AC-3, AC-4, AC-5, AC-6, AC-7: apply a mark, validated against the solution. A wrong mark is
 // counted and the cell revealed with its correct value (flagged red); a correct mark commits. Either way,
 // auto-X any completed line and re-check win. Marks on an already-decided cell (or after the win) are ignored.
-export function applyMark(state: GameState, r: number, c: number, intent: 'fill' | 'x'): GameState {
+export function applyMark(state: GameState, r: number, c: number, intent: Intent): GameState {
   if (state.won || state.board[r][c] !== 'blank') {
     return state
   }
@@ -226,15 +232,13 @@ export function applyMark(state: GameState, r: number, c: number, intent: 'fill'
   return { ...state, board, mistakes, won: boardIsWon(state.solution, board) }
 }
 
-// A drag marks a straight run of cells. It follows the row or the column of the cell it started on, so a
+// A drag marks a straight line of cells. It follows the row or the column of the cell it started on, so a
 // shaky hand does not stray into the next line.
-export type DragAxis = 'row' | 'column'
-
 export type CellPos = { r: number; c: number }
 
 // The line a drag follows, picked by the first move off its starting cell: mostly sideways follows the row,
 // mostly up or down follows the column. A tie goes to the row. Null while the pointer is still on the start.
-export function dragAxis(start: CellPos, to: CellPos): DragAxis | null {
+export function dragAxis(start: CellPos, to: CellPos): LineKind | null {
   const dr = Math.abs(to.r - start.r)
   const dc = Math.abs(to.c - start.c)
 
@@ -247,7 +251,7 @@ export function dragAxis(start: CellPos, to: CellPos): DragAxis | null {
 
 // Every cell from the start to the pointer, along the drag's line, start included. A pointer off the line
 // counts as the cell on the line level with it.
-export function dragCells(start: CellPos, to: CellPos, axis: DragAxis): CellPos[] {
+export function dragCells(start: CellPos, to: CellPos, axis: LineKind): CellPos[] {
   const from = axis === 'row' ? start.c : start.r
   const end = axis === 'row' ? to.c : to.r
   const step = end >= from ? 1 : -1
@@ -262,6 +266,6 @@ export function dragCells(start: CellPos, to: CellPos, axis: DragAxis): CellPos[
 
 // Mark each cell in turn with the same intent, exactly as one click per cell would. Decided cells are
 // skipped, and once the puzzle is won the rest are ignored. Returns the same state when nothing changed.
-export function applyMarks(state: GameState, cells: CellPos[], intent: 'fill' | 'x'): GameState {
+export function applyMarks(state: GameState, cells: CellPos[], intent: Intent): GameState {
   return cells.reduce((next, { r, c }) => applyMark(next, r, c, intent), state)
 }

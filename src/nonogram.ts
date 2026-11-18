@@ -6,9 +6,10 @@ import {
   dragCells,
   findHints,
   type CellPos,
-  type DragAxis,
   type GameState,
   type Hint,
+  type Intent,
+  type LineKind,
 } from './nonogram-logic'
 
 // The board sizes the player can pick. Even 20×20 generates in about 15ms, so every one of these is cheap.
@@ -72,7 +73,7 @@ export function setupNonogram(
   const hintButton = hintButtonEl
 
   let state: GameState = createGame(size)
-  let mode: 'fill' | 'x' = 'fill'
+  let mode: Intent = 'fill'
   let hint: Hint | null = null
 
   function render(): void {
@@ -110,16 +111,16 @@ export function setupNonogram(
     hintButton.disabled = state.won
   }
 
-  function markAt(event: Event, intent: 'fill' | 'x'): void {
-    const cell = (event.target as HTMLElement).closest<HTMLButtonElement>('.nono-cell')
+  // The cell a pointer or click event landed on, or null when it missed every cell.
+  function cellPos(target: EventTarget | null): CellPos | null {
+    const cell = target instanceof Element ? target.closest<HTMLButtonElement>('.nono-cell') : null
 
-    if (!cell) {
-      return
-    }
+    return cell && grid.contains(cell) ? { r: Number(cell.dataset.r), c: Number(cell.dataset.c) } : null
+  }
 
-    const next = applyMark(state, Number(cell.dataset.r), Number(cell.dataset.c), intent)
-
-    // applyMark returns the same state when it ignores a click. Skip the redraw, or the win sweep replays.
+  // applyMark and applyMarks return the same state when they ignore a mark. Skip the redraw then, or the win
+  // sweep replays.
+  function commit(next: GameState): void {
     if (next === state) {
       return
     }
@@ -129,17 +130,19 @@ export function setupNonogram(
     render()
   }
 
+  function markAt(event: Event, intent: Intent): void {
+    const at = cellPos(event.target)
+
+    if (at) {
+      commit(applyMark(state, at.r, at.c, intent))
+    }
+  }
+
   grid.addEventListener('click', (event) => markAt(event, mode))
 
   // A drag marks every cell it crosses along one row or column. A press that stays on one cell is left to
   // the click and contextmenu handlers, so a plain click still marks exactly one cell.
-  let drag: { start: CellPos; intent: 'fill' | 'x'; axis: DragAxis | null } | null = null
-
-  function cellPos(target: EventTarget | null): CellPos | null {
-    const cell = target instanceof Element ? target.closest<HTMLButtonElement>('.nono-cell') : null
-
-    return cell && grid.contains(cell) ? { r: Number(cell.dataset.r), c: Number(cell.dataset.c) } : null
-  }
+  let drag: { start: CellPos; intent: Intent; axis: LineKind | null } | null = null
 
   grid.addEventListener('pointerdown', (event) => {
     const start = cellPos(event.target)
@@ -178,14 +181,7 @@ export function setupNonogram(
       return
     }
 
-    const next = applyMarks(state, dragCells(drag.start, to, drag.axis), drag.intent)
-
-    // Redraw only when a cell changed, as with a click, so the win sweep plays once.
-    if (next !== state) {
-      state = next
-      hint = null
-      render()
-    }
+    commit(applyMarks(state, dragCells(drag.start, to, drag.axis), drag.intent))
   })
 
   // Listen on the window, so letting go outside the board still ends the drag.
