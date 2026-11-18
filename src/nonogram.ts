@@ -47,7 +47,7 @@ export function setupNonogram(
           <button type="button" data-mode="fill" class="active">Fill</button>
           <button type="button" data-mode="x">Mark X</button>
         </div>
-        <span class="nono-tip">Right-click marks an X. Drag to mark a run.</span>
+        <span class="nono-tip">Right-click marks an X. Drag along a line to mark several cells.</span>
         <p id="nono-status" aria-live="polite">Mistakes: 0</p>
       </div>
       <p id="nono-hint-note" class="nono-hint-note" aria-live="polite"></p>
