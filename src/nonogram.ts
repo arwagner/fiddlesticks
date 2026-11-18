@@ -1,4 +1,16 @@
-import { newGame, applyMark, findHints, type GameState, type Hint } from './nonogram-logic'
+import {
+  newGame,
+  applyMark,
+  applyMarks,
+  dragAxis,
+  dragCells,
+  findHints,
+  type CellPos,
+  type GameState,
+  type Hint,
+  type Intent,
+  type LineKind,
+} from './nonogram-logic'
 
 // The board sizes the player can pick. Even 20×20 generates in about 15ms, so every one of these is cheap.
 export const SIZES = [5, 8, 10, 15, 20]
@@ -35,7 +47,7 @@ export function setupNonogram(
           <button type="button" data-mode="fill" class="active">Fill</button>
           <button type="button" data-mode="x">Mark X</button>
         </div>
-        <span class="nono-tip">Right-click marks an X</span>
+        <span class="nono-tip">Right-click marks an X. Drag along a line to mark several cells.</span>
         <p id="nono-status" aria-live="polite">Mistakes: 0</p>
       </div>
       <p id="nono-hint-note" class="nono-hint-note" aria-live="polite"></p>
@@ -61,7 +73,7 @@ export function setupNonogram(
   const hintButton = hintButtonEl
 
   let state: GameState = createGame(size)
-  let mode: 'fill' | 'x' = 'fill'
+  let mode: Intent = 'fill'
   let hint: Hint | null = null
 
   function render(): void {
@@ -99,16 +111,16 @@ export function setupNonogram(
     hintButton.disabled = state.won
   }
 
-  function markAt(event: Event, intent: 'fill' | 'x'): void {
-    const cell = (event.target as HTMLElement).closest<HTMLButtonElement>('.nono-cell')
+  // The cell a pointer or click event landed on, or null when it missed every cell.
+  function cellPos(target: EventTarget | null): CellPos | null {
+    const cell = target instanceof Element ? target.closest<HTMLButtonElement>('.nono-cell') : null
 
-    if (!cell) {
-      return
-    }
+    return cell && grid.contains(cell) ? { r: Number(cell.dataset.r), c: Number(cell.dataset.c) } : null
+  }
 
-    const next = applyMark(state, Number(cell.dataset.r), Number(cell.dataset.c), intent)
-
-    // applyMark returns the same state when it ignores a click. Skip the redraw, or the win sweep replays.
+  // applyMark and applyMarks return the same state when they ignore a mark. Skip the redraw then, or the win
+  // sweep replays.
+  function commit(next: GameState): void {
     if (next === state) {
       return
     }
@@ -118,7 +130,91 @@ export function setupNonogram(
     render()
   }
 
+  function markAt(event: Event, intent: Intent): void {
+    // The drag already marked its line. This is the click or contextmenu the browser sends as it ends.
+    if (dragMoved) {
+      return
+    }
+
+    const at = cellPos(event.target)
+
+    if (at) {
+      commit(applyMark(state, at.r, at.c, intent))
+    }
+  }
+
   grid.addEventListener('click', (event) => markAt(event, mode))
+
+  // A drag marks every cell it crosses along one row or column. A press that stays on one cell is left to
+  // the click and contextmenu handlers, so a plain click still marks exactly one cell.
+  let drag: { start: CellPos; intent: Intent; axis: LineKind | null } | null = null
+
+  // Set once a drag leaves its start cell, and kept after it ends: Windows sends the contextmenu when the right
+  // button comes up, and a left drag can end in a click, both at whatever cell the pointer was let go over.
+  // Neither may mark a cell off the line. The next press or key clears it.
+  let dragMoved = false
+
+  grid.addEventListener('pointerdown', (event) => {
+    const start = cellPos(event.target)
+
+    if (!start || (event.button !== 0 && event.button !== 2)) {
+      return
+    }
+
+    drag = { start, intent: event.button === 2 ? 'x' : mode, axis: null }
+  })
+
+  grid.addEventListener('pointermove', (event) => {
+    if (!drag) {
+      return
+    }
+
+    // The button came up somewhere this page never heard about, such as outside the window.
+    if (event.buttons === 0) {
+      drag = null
+      return
+    }
+
+    // A touch keeps sending its events to the cell it started on, so ask what is under the finger instead.
+    // jsdom has no elementFromPoint, and there the target is the cell under the pointer anyway.
+    const under = document.elementFromPoint ? document.elementFromPoint(event.clientX, event.clientY) : event.target
+    const to = cellPos(under)
+
+    if (!to) {
+      return
+    }
+
+    // The first move off the start cell picks the line. The drag keeps to it until the button comes up.
+    drag.axis ??= dragAxis(drag.start, to)
+
+    if (!drag.axis) {
+      return
+    }
+
+    dragMoved = true
+
+    commit(applyMarks(state, dragCells(drag.start, to, drag.axis), drag.intent))
+  })
+
+  // Listen on the window, so letting go outside the board still ends the drag.
+  const endDrag = () => {
+    drag = null
+  }
+  window.addEventListener('pointerup', endDrag)
+  window.addEventListener('pointercancel', endDrag)
+
+  const clearDragMoved = () => {
+    dragMoved = false
+  }
+  window.addEventListener('pointerdown', clearDragMoved)
+  window.addEventListener('keydown', clearDragMoved)
+
+  // A right-drag let go off the board must not open the browser menu there either.
+  window.addEventListener('contextmenu', (event) => {
+    if (dragMoved) {
+      event.preventDefault()
+    }
+  })
 
   // A right-click always marks an X, whatever the mode buttons say. The mode itself does not change.
   grid.addEventListener('contextmenu', (event) => {

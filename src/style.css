@@ -363,6 +363,7 @@ h1 {
   gap: var(--cell-gap);
   width: fit-content;
   max-width: 100%;
+  user-select: none; /* a drag across the board marks cells, so it must not select the clues */
 }
 
 .nono-grid[data-scale='md'] {
@@ -412,7 +413,8 @@ h1 {
   font-size: var(--glyph-size);
   cursor: pointer;
   padding: 0;
-  touch-action: manipulation;
+  /* A finger dragging over the board marks cells instead of scrolling the page. */
+  touch-action: none;
 }
 
 .nono-filled {
