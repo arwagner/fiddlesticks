@@ -99,11 +99,64 @@ http://187.124.159.132/
 After code changes:
 
 ```bash
-npm run build
-rsync -az --delete dist/ <user>@187.124.159.132:/var/www/fiddlesticks/
+npm run deploy
 ```
 
-## 5) Useful checks
+That builds, rsyncs `dist/` to the VPS with `scripts/deploy.mjs`, then fetches
+`https://fiddlesticks.vawagners.cloud/` and fails unless it serves the `index.html` just built. Set
+`DEPLOY_USER`, `DEPLOY_HOST`, `DEPLOY_PATH`, `DEPLOY_URL` or `DEPLOY_SSH_KEY` to deploy somewhere else; the
+script's header lists the defaults.
+
+## 5) Deploy on every merge to main
+
+A workflow at `.github/workflows/deploy.yml` runs the checks on each push to `main` and, when they pass, runs
+`scripts/deploy.mjs`. It needs two repository secrets:
+
+- `DEPLOY_SSH_KEY`: a private key whose public half is in the deploy user's `~/.ssh/authorized_keys` on the VPS.
+- `DEPLOY_KNOWN_HOSTS`: the VPS's host key lines, from `ssh-keyscan 187.124.159.132`.
+
+```yaml
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# One deploy at a time, and never cancel one half-way through an rsync.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - name: Install the deploy key
+        env:
+          KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOSTS" >> ~/.ssh/known_hosts
+      - run: DEPLOY_SSH_KEY="$HOME/.ssh/deploy_key" node scripts/deploy.mjs
+```
+
+The live check needs nginx to answer `https://fiddlesticks.vawagners.cloud/`: set `server_name` to that domain
+and add HTTPS with Certbot (`sudo certbot --nginx -d fiddlesticks.vawagners.cloud`).
+
+## 6) Useful checks
 
 On the VPS:
 
@@ -115,4 +168,4 @@ sudo systemctl status nginx
 ## Notes
 
 - The app is fully static after build, so runtime Node.js is not required on the VPS.
-- If you later add a domain, set `server_name` to that domain and add HTTPS via Certbot.
+- The domain is `fiddlesticks.vawagners.cloud`; its nginx `server_name` and Certbot certificate are in step 5.
