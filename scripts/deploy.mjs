@@ -41,7 +41,7 @@ async function main() {
   console.log(`rsync ${rsyncArgs.join(' ')}`)
   execFileSync('rsync', rsyncArgs, { stdio: 'inherit' })
 
-  const response = await fetch(url, { cache: 'no-store' })
+  const response = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(30_000) })
   const served = await response.text()
   if (!response.ok || !servesBuild(served, readFileSync('dist/index.html', 'utf8'))) {
     throw new Error(`${url} answered ${response.status}, but not with the index.html just deployed`)
