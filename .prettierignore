@@ -1,0 +1,8 @@
+dist
+public
+package-lock.json
+.scratch
+*.md
+.github
+.agents
+.claude
