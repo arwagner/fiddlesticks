@@ -228,3 +228,108 @@ test('feat-004/AC-8: New puzzle resets the board and the mistake count', () => {
   expect(status(el)).toBe('Mistakes: 0')
   expect(el.querySelectorAll('.nono-filled, .nono-x').length).toBe(0)
 })
+
+function pointer(type: string, target: Element, button = 0, buttons = 1): void {
+  target.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, button, buttons }))
+}
+
+// jsdom has no elementFromPoint, so the view reads the cell from each move's target. Each cell is looked up
+// fresh, because every redraw replaces the grid's buttons.
+function dragAcross(el: HTMLElement, path: Array<[number, number]>, button = 0): void {
+  const buttons = button === 2 ? 2 : 1
+  pointer('pointerdown', cell(el, ...path[0]), button, buttons)
+  path.slice(1).forEach(([r, c]) => pointer('pointermove', cell(el, r, c), button, buttons))
+  pointer('pointerup', cell(el, ...path[path.length - 1]), button, 0)
+}
+
+test('a left drag along a row marks every cell it crosses in the current mode', () => {
+  const el = mount()
+  const [, xBtn] = el.querySelectorAll<HTMLButtonElement>('.nono-mode button')
+  xBtn.click()
+
+  dragAcross(el, [
+    [0, 1],
+    [0, 2],
+    [0, 3],
+  ]) // all empty in the solution, so correct X marks
+
+  expect([1, 2, 3].map((c) => cell(el, 0, c).classList.contains('nono-x'))).toEqual([true, true, true])
+  expect(status(el)).toBe('Mistakes: 0')
+})
+
+test('a right drag down a column marks X on every cell, whatever the mode', () => {
+  const el = mount() // Fill mode
+
+  dragAcross(
+    el,
+    [
+      [1, 0],
+      [2, 0],
+      [3, 0],
+    ],
+    2,
+  )
+
+  expect([1, 2, 3].map((r) => cell(el, r, 0).classList.contains('nono-x'))).toEqual([true, true, true])
+  expect(status(el)).toBe('Mistakes: 0')
+})
+
+test('a drag fills in cells the pointer skipped over', () => {
+  const el = mount()
+  const [, xBtn] = el.querySelectorAll<HTMLButtonElement>('.nono-mode button')
+  xBtn.click()
+
+  dragAcross(el, [
+    [2, 0],
+    [2, 1], // the pointer jumps from here straight to column 4
+    [2, 4],
+  ])
+
+  // Row 2 is empty everywhere but column 2, so the fast drag still marks columns 0 to 4 and counts one slip.
+  expect(cell(el, 2, 3).classList.contains('nono-x')).toBe(true)
+  expect(cell(el, 2, 2).classList.contains('nono-wrong-filled')).toBe(true)
+  expect(status(el)).toBe('Mistakes: 1')
+})
+
+test('a drag keeps to the line it started on', () => {
+  const el = mount()
+  const [, xBtn] = el.querySelectorAll<HTMLButtonElement>('.nono-mode button')
+  xBtn.click()
+
+  dragAcross(el, [
+    [0, 1],
+    [0, 2],
+    [1, 2], // a wobble down into row 1
+    [1, 3],
+  ])
+
+  expect(cell(el, 0, 3).classList.contains('nono-x')).toBe(true) // row 0 went on to column 3
+  expect(cell(el, 1, 2).classList.contains('nono-blank')).toBe(true) // row 1 was not touched
+  expect(status(el)).toBe('Mistakes: 0')
+})
+
+test('moving the pointer after letting go marks nothing', () => {
+  const el = mount()
+
+  dragAcross(el, [
+    [0, 0],
+    [1, 0],
+  ], 2)
+  pointer('pointermove', cell(el, 3, 0), 0, 0)
+  pointer('pointermove', cell(el, 3, 0), 0, 1) // even with a button down that never pressed on the board
+
+  expect(cell(el, 3, 0).classList.contains('nono-blank')).toBe(true)
+})
+
+test('a drag across a solved board leaves it alone', () => {
+  const el = mount()
+  X_GRID.forEach((row, r) => row.forEach((filled, c) => filled && cell(el, r, c).click()))
+  const before = el.querySelector('#nono-grid')!.innerHTML
+
+  dragAcross(el, [
+    [0, 1],
+    [0, 3],
+  ])
+
+  expect(el.querySelector('#nono-grid')!.innerHTML).toBe(before)
+})

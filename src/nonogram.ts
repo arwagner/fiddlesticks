@@ -1,4 +1,15 @@
-import { newGame, applyMark, findHints, type GameState, type Hint } from './nonogram-logic'
+import {
+  newGame,
+  applyMark,
+  applyMarks,
+  dragAxis,
+  dragCells,
+  findHints,
+  type CellPos,
+  type DragAxis,
+  type GameState,
+  type Hint,
+} from './nonogram-logic'
 
 // The board sizes the player can pick. Even 20×20 generates in about 15ms, so every one of these is cheap.
 export const SIZES = [5, 8, 10, 15, 20]
@@ -35,7 +46,7 @@ export function setupNonogram(
           <button type="button" data-mode="fill" class="active">Fill</button>
           <button type="button" data-mode="x">Mark X</button>
         </div>
-        <span class="nono-tip">Right-click marks an X</span>
+        <span class="nono-tip">Right-click marks an X. Drag to mark a run.</span>
         <p id="nono-status" aria-live="polite">Mistakes: 0</p>
       </div>
       <p id="nono-hint-note" class="nono-hint-note" aria-live="polite"></p>
@@ -119,6 +130,70 @@ export function setupNonogram(
   }
 
   grid.addEventListener('click', (event) => markAt(event, mode))
+
+  // A drag marks every cell it crosses along one row or column. A press that stays on one cell is left to
+  // the click and contextmenu handlers, so a plain click still marks exactly one cell.
+  let drag: { start: CellPos; intent: 'fill' | 'x'; axis: DragAxis | null } | null = null
+
+  function cellPos(target: EventTarget | null): CellPos | null {
+    const cell = target instanceof Element ? target.closest<HTMLButtonElement>('.nono-cell') : null
+
+    return cell && grid.contains(cell) ? { r: Number(cell.dataset.r), c: Number(cell.dataset.c) } : null
+  }
+
+  grid.addEventListener('pointerdown', (event) => {
+    const start = cellPos(event.target)
+
+    if (!start || (event.button !== 0 && event.button !== 2)) {
+      return
+    }
+
+    drag = { start, intent: event.button === 2 ? 'x' : mode, axis: null }
+  })
+
+  grid.addEventListener('pointermove', (event) => {
+    if (!drag) {
+      return
+    }
+
+    // The button came up somewhere this page never heard about, such as outside the window.
+    if (event.buttons === 0) {
+      drag = null
+      return
+    }
+
+    // A touch keeps sending its events to the cell it started on, so ask what is under the finger instead.
+    // jsdom has no elementFromPoint, and there the target is the cell under the pointer anyway.
+    const under = document.elementFromPoint ? document.elementFromPoint(event.clientX, event.clientY) : event.target
+    const to = cellPos(under)
+
+    if (!to) {
+      return
+    }
+
+    // The first move off the start cell picks the line. The drag keeps to it until the button comes up.
+    drag.axis ??= dragAxis(drag.start, to)
+
+    if (!drag.axis) {
+      return
+    }
+
+    const next = applyMarks(state, dragCells(drag.start, to, drag.axis), drag.intent)
+
+    // Redraw only when a cell changed, as with a click, so the win sweep plays once.
+    if (next !== state) {
+      state = next
+      hint = null
+      render()
+    }
+  })
+
+  // Listen on the window, so letting go outside the board still ends the drag.
+  const endDrag = () => {
+    drag = null
+  }
+  window.addEventListener('pointerup', endDrag)
+  window.addEventListener('pointercancel', endDrag)
 
   // A right-click always marks an X, whatever the mode buttons say. The mode itself does not change.
   grid.addEventListener('contextmenu', (event) => {

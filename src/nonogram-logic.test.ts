@@ -7,6 +7,9 @@ import {
   newGame,
   newGameFromSolution,
   applyMark,
+  applyMarks,
+  dragAxis,
+  dragCells,
   type GameState,
 } from './nonogram-logic'
 
@@ -115,4 +118,67 @@ test('feat-004/AC-8: a new game resets board and mistakes', () => {
   const fresh = newGameFromSolution(X_GRID) // "New puzzle"
   expect(fresh.mistakes).toBe(0)
   expect(fresh.board.flat().every((cell) => cell === 'blank')).toBe(true)
+})
+
+test('a drag follows the row when the first move is sideways, the column when it is up or down', () => {
+  const start = { r: 2, c: 2 }
+
+  expect(dragAxis(start, start)).toBeNull() // still on the start cell
+  expect(dragAxis(start, { r: 2, c: 4 })).toBe('row')
+  expect(dragAxis(start, { r: 0, c: 2 })).toBe('column')
+  expect(dragAxis(start, { r: 3, c: 4 })).toBe('row') // mostly sideways
+  expect(dragAxis(start, { r: 4, c: 1 })).toBe('column') // mostly down
+  expect(dragAxis(start, { r: 3, c: 3 })).toBe('row') // a tie goes to the row
+})
+
+test('dragCells runs from the start to the pointer along the line, start included, either way', () => {
+  expect(dragCells({ r: 1, c: 1 }, { r: 1, c: 3 }, 'row')).toEqual([
+    { r: 1, c: 1 },
+    { r: 1, c: 2 },
+    { r: 1, c: 3 },
+  ])
+  expect(dragCells({ r: 3, c: 0 }, { r: 1, c: 0 }, 'column')).toEqual([
+    { r: 3, c: 0 },
+    { r: 2, c: 0 },
+    { r: 1, c: 0 },
+  ])
+})
+
+test('dragCells keeps to the line when the pointer strays off it', () => {
+  // The drag follows row 1, so a pointer down in row 3 still marks row 1, up to the pointer's column.
+  expect(dragCells({ r: 1, c: 0 }, { r: 3, c: 2 }, 'row')).toEqual([
+    { r: 1, c: 0 },
+    { r: 1, c: 1 },
+    { r: 1, c: 2 },
+  ])
+})
+
+test('applyMarks marks each cell as one click per cell would, skipping decided cells', () => {
+  const start = applyMark(newGameFromSolution(X_GRID), 0, 0, 'fill')
+  const cells = [
+    { r: 0, c: 0 }, // already filled, so skipped
+    { r: 0, c: 1 },
+    { r: 0, c: 2 },
+  ]
+
+  const viaMarks = applyMarks(start, cells, 'x')
+  const viaClicks = applyMark(applyMark(start, 0, 1, 'x'), 0, 2, 'x')
+
+  expect(viaMarks).toEqual(viaClicks)
+  expect(viaMarks.board[0].slice(0, 3)).toEqual(['filled', 'x', 'x'])
+  expect(viaMarks.mistakes).toBe(0)
+})
+
+test('applyMarks counts a mistake for every wrong cell it crosses', () => {
+  // Filling row 0 of the X grid: cells 1, 2 and 3 are empty in the solution.
+  const next = applyMarks(newGameFromSolution(X_GRID), dragCells({ r: 0, c: 0 }, { r: 0, c: 4 }, 'row'), 'fill')
+
+  expect(next.mistakes).toBe(3)
+  expect(next.board[0]).toEqual(['filled', 'wrong-x', 'wrong-x', 'wrong-x', 'filled'])
+})
+
+test('applyMarks returns the same state when every cell is already decided', () => {
+  const start = applyMark(newGameFromSolution(X_GRID), 0, 0, 'fill')
+
+  expect(applyMarks(start, [{ r: 0, c: 0 }], 'fill')).toBe(start)
 })

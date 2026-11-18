@@ -225,3 +225,43 @@ export function applyMark(state: GameState, r: number, c: number, intent: 'fill'
 
   return { ...state, board, mistakes, won: boardIsWon(state.solution, board) }
 }
+
+// A drag marks a straight run of cells. It follows the row or the column of the cell it started on, so a
+// shaky hand does not stray into the next line.
+export type DragAxis = 'row' | 'column'
+
+export type CellPos = { r: number; c: number }
+
+// The line a drag follows, picked by the first move off its starting cell: mostly sideways follows the row,
+// mostly up or down follows the column. A tie goes to the row. Null while the pointer is still on the start.
+export function dragAxis(start: CellPos, to: CellPos): DragAxis | null {
+  const dr = Math.abs(to.r - start.r)
+  const dc = Math.abs(to.c - start.c)
+
+  if (dr === 0 && dc === 0) {
+    return null
+  }
+
+  return dc >= dr ? 'row' : 'column'
+}
+
+// Every cell from the start to the pointer, along the drag's line, start included. A pointer off the line
+// counts as the cell on the line level with it.
+export function dragCells(start: CellPos, to: CellPos, axis: DragAxis): CellPos[] {
+  const from = axis === 'row' ? start.c : start.r
+  const end = axis === 'row' ? to.c : to.r
+  const step = end >= from ? 1 : -1
+  const cells: CellPos[] = []
+
+  for (let i = from; i !== end + step; i += step) {
+    cells.push(axis === 'row' ? { r: start.r, c: i } : { r: i, c: start.c })
+  }
+
+  return cells
+}
+
+// Mark each cell in turn with the same intent, exactly as one click per cell would. Decided cells are
+// skipped, and once the puzzle is won the rest are ignored. Returns the same state when nothing changed.
+export function applyMarks(state: GameState, cells: CellPos[], intent: 'fill' | 'x'): GameState {
+  return cells.reduce((next, { r, c }) => applyMark(next, r, c, intent), state)
+}
