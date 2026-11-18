@@ -161,39 +161,41 @@ export function targetIslands(size: number): number {
 // After this many refused steps in a row no more islands fit, and the board is kept with fewer.
 const MAX_REFUSED_STEPS = 1000
 
+// A dealt board and its solution: the level of each pair.
+export type Board = { puzzle: Puzzle; solution: number[] }
+
 // A board grown one island at a time, each joined to one already there by 1 or 2 bridges, so the bridges
-// laid down are an answer. Returns the islands with their counts and that answer's level for each pair.
-export function growBoard(size: number, random: () => number): { puzzle: Puzzle; solution: number[] } {
+// laid down are a solution. Returns the islands with their counts and that solution's level for each pair.
+export function growBoard(size: number, random: () => number): Board {
   const pick = (n: number) => Math.floor(random() * n)
   const cells = size * size
   // An island's index in each cell, and whether a bridge runs over each cell.
   const islandIn = new Array<number>(cells).fill(-1)
   const bridged = new Array<boolean>(cells).fill(false)
-  const spots: { row: number; col: number }[] = []
-  const counts: number[] = []
+  const islands: Island[] = []
   const laid: { a: number; b: number; level: number }[] = []
   const inside = (row: number, col: number) => row >= 0 && row < size && col >= 0 && col < size
   const isIsland = (row: number, col: number) => inside(row, col) && islandIn[row * size + col] >= 0
 
   const place = (row: number, col: number) => {
-    islandIn[row * size + col] = spots.length
-    spots.push({ row, col })
-    counts.push(0)
+    islandIn[row * size + col] = islands.length
+    islands.push({ row, col, count: 0 })
   }
 
   place(pick(size), pick(size))
 
-  for (let refused = 0; spots.length < targetIslands(size) && refused < MAX_REFUSED_STEPS;) {
-    const from = pick(spots.length)
+  for (let refused = 0; islands.length < targetIslands(size) && refused < MAX_REFUSED_STEPS;) {
+    const from = pick(islands.length)
     const { dr, dc } = DIRECTIONS[pick(4)]
     const distance = 2 + pick(Math.min(size - 2, 4))
-    const row = spots[from].row + dr * distance
-    const col = spots[from].col + dc * distance
+    // The cell this many steps from the island it grows from.
+    const cellAt = (step: number) => (islands[from].row + dr * step) * size + islands[from].col + dc * step
+    const row = islands[from].row + dr * distance
+    const col = islands[from].col + dc * distance
     let clear = inside(row, col)
 
     for (let step = 1; clear && step <= distance; step += 1) {
-      const cell = (spots[from].row + dr * step) * size + spots[from].col + dc * step
-      clear = islandIn[cell] < 0 && !bridged[cell]
+      clear = islandIn[cellAt(step)] < 0 && !bridged[cellAt(step)]
     }
 
     // A new island beside another would make a bridge too short to see.
@@ -207,23 +209,20 @@ export function growBoard(size: number, random: () => number): { puzzle: Puzzle;
     refused = 0
 
     for (let step = 1; step < distance; step += 1) {
-      bridged[(spots[from].row + dr * step) * size + spots[from].col + dc * step] = true
+      bridged[cellAt(step)] = true
     }
 
     const level = 1 + pick(MAX_LEVEL)
     place(row, col)
-    counts[from] += level
-    counts[spots.length - 1] += level
-    laid.push({ a: from, b: spots.length - 1, level })
+    islands[from].count += level
+    islands[islands.length - 1].count += level
+    laid.push({ a: from, b: islands.length - 1, level })
   }
 
-  const puzzle = makePuzzle(
-    size,
-    spots.map((spot, i) => ({ ...spot, count: counts[i] })),
-  )
-  const solution = puzzle.pairs.map(({ a, b }) => {
-    const bridge = laid.find((l) => (l.a === a && l.b === b) || (l.a === b && l.b === a))
-    return bridge ? bridge.level : 0
+  const puzzle = makePuzzle(size, islands)
+  const solution = puzzle.pairs.map(() => 0)
+  laid.forEach(({ a, b, level }) => {
+    solution[pairBetween(puzzle, a, b)] = level
   })
 
   return { puzzle, solution }
@@ -231,11 +230,7 @@ export function growBoard(size: number, random: () => number): { puzzle: Puzzle;
 
 // A board the player can finish by deduction alone, which also makes its answer the only one. If every
 // attempt fails this returns the last board, which may need a guess.
-export function generateSolvableBoard(
-  size: number,
-  random: () => number,
-  maxAttempts = 100,
-): { puzzle: Puzzle; solution: number[] } {
+export function generateSolvableBoard(size: number, random: () => number, maxAttempts = 100): Board {
   let board = growBoard(size, random)
 
   for (let attempt = 1; attempt < maxAttempts && !isDeducible(board.puzzle); attempt += 1) {
