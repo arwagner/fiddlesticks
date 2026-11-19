@@ -4,6 +4,7 @@ import { setupSolitaire } from './solitaire'
 import { setupNonogram } from './nonogram'
 import { setupDecant } from './decant'
 import { setupPipes } from './pipes'
+import { setupBridges } from './bridges'
 
 const app = document.querySelector<HTMLDivElement>('#app')
 
@@ -29,6 +30,7 @@ const launchers = new Map<string, Launcher>([
   [slugify('Nonogram'), { rootId: 'nonogram-root', setup: setupNonogram }],
   [slugify('Decant'), { rootId: 'decant-root', setup: setupDecant }],
   [slugify('Pipes'), { rootId: 'pipes-root', setup: (container) => setupPipes(container) }],
+  [slugify('Bridges'), { rootId: 'bridges-root', setup: (container) => setupBridges(container) }],
 ])
 
 const gameMap = new Map(games.map((game) => [slugify(game.title), game]))

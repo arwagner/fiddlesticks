@@ -758,3 +758,185 @@ h1 {
     margin-left: 0;
   }
 }
+
+.bridges {
+  margin-top: 1rem;
+}
+
+.bridges-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  align-items: center;
+  margin-bottom: 0.6rem;
+}
+
+.bridges-toolbar button {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.22);
+  color: var(--text);
+  padding: 0.45rem 0.7rem;
+  cursor: pointer;
+}
+
+.bridges-toolbar button:hover:not(:disabled) {
+  border-color: var(--focus);
+}
+
+.bridges-toolbar button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.bridges-size {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  color: var(--text-soft);
+}
+
+.bridges-size select {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.22);
+  color: var(--text);
+  padding: 0.4rem 0.5rem;
+  font: inherit;
+}
+
+#bridges-status {
+  font-size: 0.95rem;
+  margin-left: auto;
+}
+
+#bridges-status.bridges-status-solved {
+  color: var(--brand);
+  font-weight: 700;
+}
+
+.bridges-help {
+  font-size: 0.9rem;
+  color: var(--text-soft);
+  margin-bottom: 0.6rem;
+}
+
+.bridges-note {
+  font-size: 0.9rem;
+  color: #ffd264;
+  margin-bottom: 0.6rem;
+  min-height: 1.2rem;
+}
+
+/* The board scales to the page, so even 13×13 fits a phone. A finger drag on it lays bridges instead of
+   scrolling, and the toolbar and text around it are still there to swipe on. */
+#bridges-board {
+  display: block;
+  width: 100%;
+  max-width: 34rem;
+  margin: 0 auto;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: linear-gradient(165deg, #0b4a55, #0a2f39);
+  touch-action: none;
+  user-select: none;
+}
+
+.bridges-hit {
+  fill: transparent;
+  stroke: transparent;
+  stroke-width: 0.45;
+  cursor: pointer;
+}
+
+.bridges-line,
+.bridges-preview {
+  stroke: var(--text-soft);
+  stroke-width: 0.08;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+.bridges-preview {
+  stroke: var(--focus);
+  stroke-dasharray: 0.15 0.12;
+}
+
+.bridges-hinted .bridges-line {
+  stroke: #ffd264;
+  stroke-width: 0.12;
+}
+
+.bridges-wrong .bridges-line {
+  stroke: #cf3d48;
+  stroke-width: 0.12;
+}
+
+.bridges-refused {
+  animation: bridges-wiggle 220ms linear;
+}
+
+@keyframes bridges-wiggle {
+  20% {
+    transform: translate(0.06px, 0.06px);
+  }
+  40% {
+    transform: translate(-0.06px, -0.06px);
+  }
+  60% {
+    transform: translate(0.04px, 0.04px);
+  }
+  80% {
+    transform: translate(-0.02px, -0.02px);
+  }
+}
+
+.bridges-island circle:not(.bridges-hit) {
+  fill: #062c35;
+  stroke: var(--text-soft);
+  stroke-width: 0.06;
+  pointer-events: none;
+}
+
+.bridges-island text {
+  fill: var(--text);
+  font-size: 0.42px;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.bridges-island-done circle:not(.bridges-hit) {
+  fill: #6dd4b8;
+  stroke: #6dd4b8;
+}
+
+.bridges-island-done text {
+  fill: #05161a;
+}
+
+.bridges-island-over circle:not(.bridges-hit) {
+  fill: #3a1016;
+  stroke: #cf3d48;
+  stroke-width: 0.09;
+}
+
+.bridges-island-over text {
+  fill: #ff9aa2;
+}
+
+.bridges-solved .bridges-line {
+  stroke: #6dd4b8;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bridges-refused {
+    animation: none;
+  }
+}
+
+@media (max-width: 700px) {
+  #bridges-status {
+    margin-left: 0;
+  }
+}
