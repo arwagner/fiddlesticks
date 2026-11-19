@@ -1,118 +1,38 @@
 # Fiddlesticks VPS Deployment
 
-This project deploys as static HTML/CSS/JS files (no Docker).
+The app is static HTML/CSS/JS. It lives at https://fiddlesticks.vawagners.cloud/.
 
-## Target
+## Where it is served
 
-- VPS IP: `187.124.159.132`
-- App URL after deploy: `http://187.124.159.132/`
+- VPS: `187.124.159.132`.
+- Web server: Caddy, in Docker, run by the millwright repo at `/srv/millwright` on the VPS. Its
+  `caddy/Caddyfile` serves `fiddlesticks.vawagners.cloud` from `/srv/millwright/sites/fiddlesticks` (mounted
+  into the container as `/srv/sites/fiddlesticks`), and gets the HTTPS certificate itself.
+- Caddy sends `index.html` for unknown paths and caches `/assets/*` forever: Vite puts a content hash in each
+  asset name.
 
-## 1) Prepare the VPS (one-time)
+## Deploy on every merge to main
 
-SSH into the server:
+`.github/workflows/deploy.yml` runs on each push to `main`: `npm run check`, then `npm run deploy`. It uses two
+repository secrets:
 
-```bash
-ssh <user>@187.124.159.132
-```
+- `DEPLOY_SSH_KEY`: the private half of the deploy key. Its public half is in root's
+  `~/.ssh/authorized_keys` on the VPS, locked to rsync into the web root:
+  `command="rrsync /srv/millwright/sites/fiddlesticks",restrict ssh-ed25519 ... fiddlesticks-deploy`.
+- `DEPLOY_KNOWN_HOSTS`: the VPS's host keys, from `ssh-keyscan 187.124.159.132`.
 
-Install nginx (Ubuntu/Debian):
+`rrsync` makes every path the key asks for relative to the web root, so the workflow sets `DEPLOY_PATH=.`.
 
-```bash
-sudo apt update
-sudo apt install -y nginx
-sudo systemctl enable --now nginx
-```
-
-Allow web traffic if UFW is enabled:
-
-```bash
-sudo ufw allow 80/tcp
-```
-
-Create a web root for the app:
+## Deploy by hand
 
 ```bash
-sudo mkdir -p /var/www/fiddlesticks
-sudo chown -R "$USER":"$USER" /var/www/fiddlesticks
+npm run deploy
 ```
 
-Create nginx site config:
+That builds, rsyncs `dist/` to the VPS with `scripts/deploy.mjs`, then fetches
+`https://fiddlesticks.vawagners.cloud/` and fails unless it serves the `index.html` just built. It uses your own
+ssh access as root. Set `DEPLOY_USER`, `DEPLOY_HOST`, `DEPLOY_PATH`, `DEPLOY_URL` or `DEPLOY_SSH_KEY` to deploy
+somewhere else; the script's header lists the defaults.
 
-```bash
-sudo tee /etc/nginx/sites-available/fiddlesticks >/dev/null <<'EOF'
-server {
-	listen 80;
-	server_name 187.124.159.132;
-
-	root /var/www/fiddlesticks;
-	index index.html;
-
-	location / {
-		try_files $uri $uri/ /index.html;
-	}
-
-	location /assets/ {
-		add_header Cache-Control "public, max-age=31536000, immutable";
-		try_files $uri =404;
-	}
-}
-EOF
-```
-
-Enable the site and reload nginx:
-
-```bash
-sudo ln -sf /etc/nginx/sites-available/fiddlesticks /etc/nginx/sites-enabled/fiddlesticks
-sudo rm -f /etc/nginx/sites-enabled/default
-sudo nginx -t
-sudo systemctl reload nginx
-```
-
-## 2) Build static files locally
-
-From your project root:
-
-```bash
-npm run build
-```
-
-This outputs deployable files into `dist/`.
-
-## 3) Upload built files to VPS
-
-From your local machine:
-
-```bash
-rsync -az --delete dist/ <user>@187.124.159.132:/var/www/fiddlesticks/
-```
-
-Important: keep the trailing slash in `dist/`. Without it, rsync may create `/var/www/fiddlesticks/dist/` and nginx can return `403 Forbidden` at `/`.
-
-Open the app at:
-
-```text
-http://187.124.159.132/
-```
-
-## 4) Update deploys
-
-After code changes:
-
-```bash
-npm run build
-rsync -az --delete dist/ <user>@187.124.159.132:/var/www/fiddlesticks/
-```
-
-## 5) Useful checks
-
-On the VPS:
-
-```bash
-sudo nginx -t
-sudo systemctl status nginx
-```
-
-## Notes
-
-- The app is fully static after build, so runtime Node.js is not required on the VPS.
-- If you later add a domain, set `server_name` to that domain and add HTTPS via Certbot.
+Keep the trailing slash on `dist/` if you ever rsync by hand. Without it, rsync makes a `dist/` folder inside the
+web root and the site answers 404.

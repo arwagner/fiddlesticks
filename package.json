@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "deploy": "npm run build && rsync -az --delete dist/ root@187.124.159.132:/var/www/fiddlesticks/",
+    "deploy": "npm run build && node scripts/deploy.mjs",
     "check": "npm run lint && npm run build && npm run test",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write . && eslint --fix .",
