@@ -1,10 +1,10 @@
 // Deploys the built site (dist/) to the VPS, then checks the live site serves this build.
-// Run after `npm run build`: `node scripts/deploy.mjs`. The deploy workflow in DEPLOYMENT.md step 5
-// runs it on every push to main, once a maintainer adds that workflow to .github/.
+// Run after `npm run build`: `node scripts/deploy.mjs`. .github/workflows/deploy.yml runs it on every
+// push to main.
 //
 // Settings come from the environment, defaulting to the production VPS:
 //   DEPLOY_USER, DEPLOY_HOST  who and where to rsync to (root, 187.124.159.132)
-//   DEPLOY_PATH               the web root nginx serves (/var/www/fiddlesticks)
+//   DEPLOY_PATH               the web root Caddy serves (/srv/millwright/sites/fiddlesticks)
 //   DEPLOY_URL                the public address to check afterwards (https://fiddlesticks.vawagners.cloud/)
 //   DEPLOY_SSH_KEY            optional path to the private key ssh should use
 
@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url'
 export const DEFAULTS = {
   user: 'root',
   host: '187.124.159.132',
-  path: '/var/www/fiddlesticks',
+  path: '/srv/millwright/sites/fiddlesticks',
   url: 'https://fiddlesticks.vawagners.cloud/',
 }
 

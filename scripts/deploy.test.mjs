@@ -4,7 +4,7 @@ import { DEFAULTS, deployPlan, servesBuild } from './deploy.mjs'
 describe('deployPlan', () => {
   it('rsyncs dist to the production VPS and checks the public site when nothing is set', () => {
     expect(deployPlan({})).toEqual({
-      rsyncArgs: ['-az', '--delete', 'dist/', 'root@187.124.159.132:/var/www/fiddlesticks/'],
+      rsyncArgs: ['-az', '--delete', 'dist/', 'root@187.124.159.132:/srv/millwright/sites/fiddlesticks/'],
       url: DEFAULTS.url,
     })
   })
@@ -36,7 +36,7 @@ describe('deployPlan', () => {
       '-e',
       'ssh -i "/tmp/my key" -o IdentitiesOnly=yes',
       'dist/',
-      'root@187.124.159.132:/var/www/fiddlesticks/',
+      'root@187.124.159.132:/srv/millwright/sites/fiddlesticks/',
     ])
   })
 })
