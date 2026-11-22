@@ -12,11 +12,11 @@ export const GAP_X = 12
 export const GAP_Y = 20 // between the top row and the cascades
 export const MARGIN = 12
 // The fan step a cascade uses while it has room.
-export const FAN_STEP = 36
+export const FULL_FAN_STEP = 36
 // The strip at the top of a card where its rank and suit are drawn. However long a cascade grows, its fan
 // step never drops below this, so every card's rank and suit stay showing.
 export const INDEX_H = 30
-// How tall the board may grow. A cascade too long to fit at FAN_STEP closes up its fan to stay within it.
+// How tall the board may grow. A cascade too long to fit at FULL_FAN_STEP closes up its fan to stay within it.
 export const MAX_HEIGHT = 860
 
 // Eight cascades side by side, a gap apart, with a margin either side.
@@ -33,7 +33,7 @@ export type Layout = {
   marginX: number // to the first cascade, so the board sits in the middle of the container
   marginY: number
   cascadeY: number // the top of every cascade's first card
-  fanStep: number
+  fullFanStep: number
   indexH: number
   maxHeight: number
 }
@@ -51,7 +51,7 @@ export function freeCellLayout(containerWidth: number): Layout {
     marginX: (containerWidth - (BOARD_W - 2 * MARGIN) * scale) / 2,
     marginY,
     cascadeY: marginY + (CARD_H + GAP_Y) * scale,
-    fanStep: FAN_STEP * scale,
+    fullFanStep: FULL_FAN_STEP * scale,
     indexH: INDEX_H * scale,
     maxHeight: MAX_HEIGHT * scale,
   }
@@ -77,17 +77,19 @@ export function placeRect(place: Place, layout: Layout): Rect {
   }
 }
 
-// How far each card in a cascade of this many cards sits below the one before: FAN_STEP while the foot
+// How far each card in a cascade of this many cards sits below the one before: FULL_FAN_STEP while the foot
 // fits within the board's maximum height, closer when it would not, but never less than a card's index.
+// Play builds a cascade to 19 cards at most (six dealt under a King-to-Ace sequence), and at that floor 20
+// still fit, so the floor never pushes a foot past the maximum height.
 export function fanStep(cardCount: number, layout: Layout): number {
   if (cardCount < 2) {
-    return layout.fanStep
+    return layout.fullFanStep
   }
 
   const room = layout.maxHeight - layout.marginY - layout.cascadeY - layout.cardH
   const fitting = room / (cardCount - 1)
 
-  return Math.max(layout.indexH, Math.min(layout.fanStep, fitting))
+  return Math.max(layout.indexH, Math.min(layout.fullFanStep, fitting))
 }
 
 // The rectangle of every card in one cascade, from the first card dealt down to its foot.

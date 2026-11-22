@@ -62,7 +62,7 @@ test('a short cascade fans its cards downwards at the full fan step', () => {
 
   expect(rects).toHaveLength(7)
   expect(rects[0]).toEqual(placeRect({ kind: 'cascade', index: 0 }, layout))
-  expect(rects[1].y - rects[0].y).toBeCloseTo(layout.fanStep, 5)
+  expect(rects[1].y - rects[0].y).toBeCloseTo(layout.fullFanStep, 5)
 })
 
 test.each([PHONE, 800, 1600])(
@@ -74,7 +74,7 @@ test.each([PHONE, 800, 1600])(
     const step = rects[1].y - rects[0].y
 
     expect(foot.y + foot.h).toBeLessThanOrEqual(layout.maxHeight)
-    expect(step).toBeLessThan(layout.fanStep)
+    expect(step).toBeLessThan(layout.fullFanStep)
     expect(step).toBeGreaterThanOrEqual(layout.indexH)
   },
 )
