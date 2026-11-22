@@ -1,6 +1,6 @@
 // Draws a card's face, a card's back and an empty slot on a 2D canvas, for every card game. It knows how a
 // card looks, not where it goes or which moves are legal: the caller passes the rect to draw in.
-import { type Rect, type Suit, CARD_W, INDEX_BASELINE, cardColor, rankLabels, suitLabels } from './cards'
+import { type Rect, type Suit, CARD_W, INDEX_BASELINE, cardColor, rankLabels, pips } from './cards'
 
 // Trebuchet first for the rank digits; the symbol fonts back it up wherever it lacks a suit pip.
 const CARD_FONT = '"Trebuchet MS", "Apple Symbols", "Segoe UI Symbol", sans-serif'
@@ -38,7 +38,7 @@ export function drawCardFace(ctx: CanvasRenderingContext2D, card: { suit: Suit; 
   ctx.lineWidth = 1.5
   ctx.stroke()
 
-  const index = `${rankLabels[card.rank - 1]}${suitLabels[card.suit]}`
+  const index = `${rankLabels[card.rank - 1]}${pips[card.suit]}`
   ctx.fillStyle = cardColor(card) === 'red' ? RED_INK : BLACK_INK
   const fontSize = Math.max(20, 40 * scaleOf(rect))
   const smallFontSize = fontSize * 0.85

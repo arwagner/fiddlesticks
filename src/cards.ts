@@ -5,8 +5,8 @@ export type Suit = 'hearts' | 'diamonds' | 'clubs' | 'spades'
 
 export const suits: Suit[] = ['hearts', 'diamonds', 'clubs', 'spades']
 export const rankLabels = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']
-// Filled Unicode pips (U+2660..U+2666). Colour comes from cardColor, so the solid pips suit both.
-export const suitLabels: Record<Suit, string> = { hearts: '♥', diamonds: '♦', clubs: '♣', spades: '♠' }
+// Each suit's pip, a filled Unicode symbol (U+2660..U+2666). Colour comes from cardColor, so the solid pips suit both.
+export const pips: Record<Suit, string> = { hearts: '♥', diamonds: '♦', clubs: '♣', spades: '♠' }
 
 // A card's base (unscaled) size. A game scales both by the same factor.
 export const CARD_W = 86
