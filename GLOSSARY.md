@@ -156,6 +156,11 @@ _Avoid_: Home, goal
 Any cascade, free cell or foundation, where a card can be taken from or put down.
 _Avoid_: Pile, spot, location
 
+**Arrangement**:
+Where every card is at one moment: the cascades, free cells and foundations, without the history. Undo
+steps back to the arrangement before.
+_Avoid_: Layout (that is the board's geometry), position
+
 **Sequence**:
 Cards at the foot of a cascade that run down in rank and alternate colour.
 _Avoid_: Run (that is Nonogram's), stack

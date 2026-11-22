@@ -11,16 +11,16 @@ export type Card = { suit: Suit; rank: number }
 // Any cascade, free cell or foundation: somewhere a card can be taken from or put down.
 export type Place = { kind: 'cascade' | 'free-cell' | 'foundation'; index: number }
 
-// Where every card is, without the history.
-export type Layout = {
+// Where every card is at one moment, without the history.
+export type Arrangement = {
   cascades: Card[][] // 8, each listed from the head down to its foot
   freeCells: (Card | null)[] // 4
   foundations: Card[][] // 4, each built up from Ace
 }
 
-export type GameState = Layout & {
-  // Each earlier layout, newest last, so undo just pops one.
-  past: Layout[]
+export type GameState = Arrangement & {
+  // Each earlier arrangement, newest last, so undo just pops one.
+  past: Arrangement[]
 }
 
 export const CASCADE_COUNT = 8
