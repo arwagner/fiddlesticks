@@ -5,7 +5,7 @@ import { CASCADE_COUNT, fullDeck, newGame, places, type Card, type GameState, ty
 import { freeCellLayout, placeRect, cascadeCardRects, type Rect } from './freecell-layout'
 import { drag, press, type PagePoint } from './gestures.test-helper'
 import { seeded } from './seeded.test-helper'
-import { rankLabels, suitLabels } from './cards'
+import { rankLabels, pips } from './cards'
 
 // Wide enough for the board at full size, so a board pixel is a page pixel.
 const WIDTH = 800
@@ -86,7 +86,7 @@ beforeEach(() => {
 })
 
 // A card's index as drawn on it: "9♠".
-const indexOf = ({ rank, suit }: Card) => `${rankLabels[rank - 1]}${suitLabels[suit]}`
+const indexOf = ({ rank, suit }: Card) => `${rankLabels[rank - 1]}${pips[suit]}`
 const card = (rank: number, suit: Card['suit']): Card => ({ rank, suit })
 const cascade = (index: number): Place => ({ kind: 'cascade', index })
 const freeCell = (index: number): Place => ({ kind: 'free-cell', index })

@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { BLACK_INK, RED_INK, drawCardBack, drawCardFace, drawEmptySlot } from './card-draw'
+import { drawCardBack, drawCardFace, drawEmptySlot } from './card-draw'
 import { CARD_H, CARD_W, type Suit } from './cards'
 
 type Call = { name: string; args: unknown[]; fillStyle: unknown; strokeStyle: unknown }
@@ -31,25 +31,26 @@ function recordingContext(): { ctx: CanvasRenderingContext2D; calls: Call[] } {
 
 const RECT = { x: 10, y: 20, w: CARD_W, h: CARD_H }
 
+// The inks Solitaire has always drawn in, written out so that swapping or merging them fails the test.
+const RED = '#cf3d48'
+const BLACK = '#1f2d3a'
+
 const cases: { suit: Suit; rank: number; index: string; ink: string }[] = [
-  { suit: 'hearts', rank: 10, index: '10♥', ink: RED_INK },
-  { suit: 'diamonds', rank: 1, index: 'A♦', ink: RED_INK },
-  { suit: 'clubs', rank: 7, index: '7♣', ink: BLACK_INK },
-  { suit: 'spades', rank: 13, index: 'K♠', ink: BLACK_INK },
+  { suit: 'hearts', rank: 10, index: '10♥', ink: RED },
+  { suit: 'diamonds', rank: 1, index: 'A♦', ink: RED },
+  { suit: 'clubs', rank: 7, index: '7♣', ink: BLACK },
+  { suit: 'spades', rank: 13, index: 'K♠', ink: BLACK },
 ]
 
-test.each(cases)(
-  'a $suit face draws its index, rank and pip, twice in its suit colour',
-  ({ suit, rank, index, ink }) => {
-    const { ctx, calls } = recordingContext()
+test.each(cases)('a $suit face draws its index twice, in its suit colour', ({ suit, rank, index, ink }) => {
+  const { ctx, calls } = recordingContext()
 
-    drawCardFace(ctx, { suit, rank }, RECT)
+  drawCardFace(ctx, { suit, rank }, RECT)
 
-    const texts = calls.filter((call) => call.name === 'fillText')
-    expect(texts.map((call) => call.args[0])).toEqual([index, index])
-    expect(texts.map((call) => call.fillStyle)).toEqual([ink, ink])
-  },
-)
+  const texts = calls.filter((call) => call.name === 'fillText')
+  expect(texts.map((call) => call.args[0])).toEqual([index, index])
+  expect(texts.map((call) => call.fillStyle)).toEqual([ink, ink])
+})
 
 test('a face draws its top index in the top-left of the card and its lower index in the bottom-right', () => {
   const { ctx, calls } = recordingContext()

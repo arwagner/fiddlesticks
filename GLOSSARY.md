@@ -153,7 +153,7 @@ _Avoid_: Icon, glyph
 
 **Index**:
 A card's rank and pip printed together in a corner ("10♥"): large at the top left, smaller at the bottom
-right. It stays showing when another card fanned over it covers the rest.
+right. The top one stays showing when another card fanned over it covers the rest.
 _Avoid_: Label, corner
 
 **Face**:
