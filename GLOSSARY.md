@@ -175,7 +175,8 @@ Moving safe cards up to the foundations without the player asking.
 _Avoid_: Auto-move, autocomplete
 
 **Safe card**:
-A card that no card left in play could still need to go onto it.
+A card that no card left in play could still need to go onto it: it can go onto its foundation, and both
+cards of the other colour one rank lower are already on foundations. Aces and Twos are always safe.
 
 **Solved**:
 All 52 cards on the foundations.
