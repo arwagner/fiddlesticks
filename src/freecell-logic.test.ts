@@ -8,6 +8,7 @@ import {
   capacity,
   isSolved,
   undo,
+  tapMove,
   type Card,
   type GameState,
   type Place,
@@ -246,4 +247,89 @@ test('undo does nothing with an empty past', () => {
   const state = newGame(seeded(7))
 
   expect(undo(state)).toBe(state)
+})
+
+// The move a tap picks, after checking that `move` accepts it.
+function tapped(state: GameState, from: Place, index: number) {
+  const picked = tapMove(state, from, index)
+
+  if (picked) {
+    expect(move(state, picked.from, picked.to, picked.count)).not.toBeNull()
+  }
+
+  return picked
+}
+
+test('a tapped card that can go onto a foundation goes there, before any cascade', () => {
+  const state = table([[card(1, 'hearts')], [card(2, 'spades')]], undefined, [[card(1, 'spades')], [], [], []])
+
+  expect(tapped(state, cascade(0), 0)).toEqual({ from: cascade(0), to: foundation(1), count: 1 })
+})
+
+test('otherwise a tap goes onto the first cascade from the left that takes it and is not empty', () => {
+  const state = table([[], [card(8, 'hearts'), card(7, 'clubs')], [card(8, 'diamonds')], [card(9, 'clubs')]])
+
+  expect(tapped(state, cascade(1), 1)).toEqual({ from: cascade(1), to: cascade(2), count: 1 })
+  expect(tapped(state, cascade(1), 0)).toEqual({ from: cascade(1), to: cascade(3), count: 2 })
+})
+
+test('otherwise a tap goes into the first empty cascade, sequence and all, within the capacity', () => {
+  const state = table([[card(13, 'clubs'), ...sequence(5, 3)], [card(13, 'clubs')], [], []])
+
+  expect(tapped(state, cascade(0), 3)).toEqual({ from: cascade(0), to: cascade(2), count: 1 })
+  expect(tapped(state, cascade(0), 1)).toEqual({ from: cascade(0), to: cascade(2), count: 3 })
+})
+
+test('otherwise a single tapped card goes into the first empty free cell', () => {
+  const state = table([[card(13, 'clubs'), card(5, 'diamonds')]], [card(3, 'spades'), null, null, null])
+
+  expect(tapped(state, cascade(0), 1)).toEqual({ from: cascade(0), to: freeCell(1), count: 1 })
+})
+
+test('a tap with nowhere to go gives null', () => {
+  const full = [card(3, 'spades'), card(3, 'clubs'), card(4, 'spades'), card(4, 'clubs')]
+  const state = table([[card(13, 'clubs'), card(5, 'diamonds')]], full)
+
+  expect(tapped(state, cascade(0), 1)).toBeNull()
+})
+
+test('a sequence that takes a whole cascade is not moved into an empty one, and a lone card goes to a free cell', () => {
+  const state = table([sequence(6, 2), [card(5, 'diamonds')], []])
+
+  expect(tapped(state, cascade(0), 0)).toBeNull()
+  expect(tapped(state, cascade(1), 0)).toEqual({ from: cascade(1), to: freeCell(0), count: 1 })
+})
+
+test('a tapped card buried under cards that are not a sequence with it gives null', () => {
+  const state = table([[card(9, 'spades'), card(4, 'hearts'), card(2, 'clubs')], [card(5, 'clubs')], []])
+
+  expect(tapped(state, cascade(0), 1)).toBeNull()
+  expect(tapped(state, cascade(0), 0)).toBeNull()
+})
+
+test('a sequence longer than the capacity gives null, even with a cascade that would take its top card', () => {
+  const full = [card(3, 'spades'), card(3, 'clubs'), card(4, 'spades'), null]
+  const state = table([[card(13, 'clubs'), ...sequence(8, 3)], [card(9, 'spades')]], full)
+
+  expect(tapped(state, cascade(0), 1)).toBeNull()
+  expect(tapped(state, cascade(0), 3)).toEqual({ from: cascade(0), to: freeCell(3), count: 1 })
+})
+
+test('a card in a free cell goes onto a cascade or into an empty one, but never into another free cell', () => {
+  const onto = table([[card(6, 'spades')]], [card(5, 'hearts'), null, null, null])
+  const into = table([[], [card(9, 'clubs')]], [card(5, 'clubs'), null, null, null])
+  const stuck = table([[card(9, 'clubs')]], [card(5, 'clubs'), null, null, null])
+
+  expect(tapped(onto, freeCell(0), 0)).toEqual({ from: freeCell(0), to: cascade(0), count: 1 })
+  expect(tapped(into, freeCell(0), 0)).toEqual({ from: freeCell(0), to: cascade(0), count: 1 })
+  expect(tapped(stuck, freeCell(0), 0)).toBeNull()
+})
+
+test('a tap on a foundation, an empty free cell or past the end of a cascade gives null', () => {
+  const state = table([[card(5, 'clubs')], []], undefined, [[card(1, 'hearts')], [], [], []])
+
+  expect(tapped(state, foundation(0), 0)).toBeNull()
+  expect(tapped(state, freeCell(0), 0)).toBeNull()
+  expect(tapped(state, cascade(0), 1)).toBeNull()
+  expect(tapped(state, cascade(0), -1)).toBeNull()
 })

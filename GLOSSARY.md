@@ -171,6 +171,11 @@ The most cards one move can carry: (empty free cells + 1) × 2^(empty cascades),
 cascade when the move goes into one.
 _Avoid_: Supermove, limit
 
+**Tap**:
+A press on a card that doesn't drag it. The game picks where the card goes: a foundation, then a cascade
+that isn't empty, then an empty cascade, then a free cell.
+_Avoid_: Click (on a phone it's a finger), double-click
+
 **Auto-play**:
 Moving safe cards up to the foundations without the player asking.
 _Avoid_: Auto-move, autocomplete
