@@ -282,7 +282,14 @@ export function setupFreeCell(container: HTMLElement, createGame: () => GameStat
     render()
   })
 
-  new ResizeObserver(() => draw()).observe(container)
+  // The lifted cards were measured on the old layout and no longer line up with a new one, so they go back.
+  new ResizeObserver(() => {
+    if (container.clientWidth !== layout.width) {
+      lifted = null
+    }
+
+    draw()
+  }).observe(container)
 
   render()
 }

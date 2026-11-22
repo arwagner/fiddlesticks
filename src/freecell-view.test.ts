@@ -304,3 +304,15 @@ test('a second finger neither takes over nor drops the cards the first finger is
   pointer('pointerup', board.place(cascade(1)), 1)
   expect(whereIs('9♠')).toEqual(cascade(1))
 })
+
+test('a resize in the middle of a drag puts the lifted cards back', () => {
+  const state = table([[card(13, 'clubs'), card(9, 'spades')], [card(10, 'hearts')]])
+  const board = mount(() => state)
+
+  pointer('pointerdown', board.card(state, 0, 1), 1)
+  pointer('pointermove', board.place(freeCell(2)), 1)
+  board.resizeTo(WIDTH - 100)
+  pointer('pointerup', board.place(cascade(1)), 1)
+
+  expect(board.undoButton().disabled).toBe(true)
+})
