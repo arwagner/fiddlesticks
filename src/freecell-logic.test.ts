@@ -1,5 +1,16 @@
 import { test, expect } from 'vitest'
-import { newGame, fullDeck, cardColor, type Card } from './freecell-logic'
+import {
+  newGame,
+  fullDeck,
+  cardColor,
+  move,
+  capacity,
+  isSolved,
+  undo,
+  type Card,
+  type GameState,
+  type Place,
+} from './freecell-logic'
 
 // A small seeded generator, so random deals repeat exactly.
 function seeded(seed: number): () => number {
@@ -61,4 +72,182 @@ test('cards are coloured by suit, as in Klondike', () => {
 
   expect(cardColor(diamond)).toBe('red')
   expect(cardColor(club)).toBe('black')
+})
+
+// Short names for cards and places, so a layout reads like the table.
+const card = (rank: number, suit: Card['suit']): Card => ({ suit, rank })
+const cascade = (index: number): Place => ({ kind: 'cascade', index })
+const freeCell = (index: number): Place => ({ kind: 'free-cell', index })
+const foundation = (index: number): Place => ({ kind: 'foundation', index })
+
+// A table with the given cascades (the rest empty, up to eight), free cells and foundations. A filler card
+// fills each cascade left unnamed, so that none counts as empty unless the test says so.
+function table(
+  cascades: Card[][],
+  freeCells: (Card | null)[] = [null, null, null, null],
+  foundations: Card[][] = [[], [], [], []],
+): GameState {
+  const filler = card(13, 'spades')
+  const all = Array.from({ length: 8 }, (_, index) => cascades[index] ?? [filler])
+
+  return { cascades: all, freeCells, foundations, past: [] }
+}
+
+// A sequence running down from `top` for `length` cards, alternating hearts and clubs.
+function sequence(top: number, length: number): Card[] {
+  return Array.from({ length }, (_, index) => card(top - index, index % 2 === 0 ? 'hearts' : 'clubs'))
+}
+
+test('a card one rank below and the other colour goes onto the foot of a cascade', () => {
+  const state = table([[card(9, 'spades')], [card(8, 'hearts')]])
+  const next = move(state, cascade(1), cascade(0), 1)
+
+  expect(next?.cascades[0]).toEqual([card(9, 'spades'), card(8, 'hearts')])
+  expect(next?.cascades[1]).toEqual([])
+})
+
+test('a card of the same colour or the wrong rank is refused on a cascade', () => {
+  const sameColour = table([[card(9, 'spades')], [card(8, 'clubs')]])
+  const wrongRank = table([[card(9, 'spades')], [card(7, 'hearts')]])
+
+  expect(move(sameColour, cascade(1), cascade(0), 1)).toBeNull()
+  expect(move(wrongRank, cascade(1), cascade(0), 1)).toBeNull()
+})
+
+test('any card goes into an empty cascade', () => {
+  const state = table([[], [card(5, 'diamonds')]])
+
+  expect(move(state, cascade(1), cascade(0), 1)?.cascades[0]).toEqual([card(5, 'diamonds')])
+})
+
+test('one card goes onto an empty free cell, and a second card is refused on a full one', () => {
+  const state = table([[card(4, 'clubs')], [card(9, 'hearts')]])
+  const next = move(state, cascade(0), freeCell(2), 1)
+
+  expect(next?.freeCells).toEqual([null, null, card(4, 'clubs'), null])
+  expect(move(next!, cascade(1), freeCell(2), 1)).toBeNull()
+})
+
+test('two cards are refused on a free cell, and one card comes back from it onto a cascade', () => {
+  const state = table([sequence(9, 2), [card(5, 'spades')]], [card(4, 'hearts'), null, null, null])
+
+  expect(move(state, cascade(0), freeCell(1), 2)).toBeNull()
+  expect(move(state, freeCell(0), cascade(1), 1)?.cascades[1]).toEqual([card(5, 'spades'), card(4, 'hearts')])
+  expect(move(state, freeCell(0), cascade(1), 2)).toBeNull()
+})
+
+test('foundations are built from the Ace up by suit', () => {
+  const state = table([[card(2, 'hearts'), card(1, 'hearts')], [card(2, 'spades')], [card(3, 'hearts')]])
+
+  expect(move(state, cascade(1), foundation(0), 1)).toBeNull()
+
+  const ace = move(state, cascade(0), foundation(0), 1)!
+  expect(ace.foundations[0]).toEqual([card(1, 'hearts')])
+  expect(move(ace, cascade(1), foundation(0), 1)).toBeNull()
+  expect(move(ace, cascade(2), foundation(0), 1)).toBeNull()
+
+  const two = move(ace, cascade(0), foundation(0), 1)!
+  expect(two.foundations[0]).toEqual([card(1, 'hearts'), card(2, 'hearts')])
+  expect(move(two, cascade(2), foundation(0), 1)?.foundations[0]).toHaveLength(3)
+})
+
+test('one card comes off a foundation onto a cascade', () => {
+  const state = table([[card(3, 'clubs')]], undefined, [[card(1, 'hearts'), card(2, 'hearts')], [], [], []])
+  const next = move(state, foundation(0), cascade(0), 1)
+
+  expect(next?.cascades[0]).toEqual([card(3, 'clubs'), card(2, 'hearts')])
+  expect(next?.foundations[0]).toEqual([card(1, 'hearts')])
+})
+
+test('a sequence of exactly the capacity moves, and one card more is refused', () => {
+  // Two empty free cells and one empty cascade: (2 + 1) × 2 = 6.
+  const state = table([[card(10, 'spades')], sequence(9, 7), []], [card(1, 'clubs'), card(1, 'spades'), null, null])
+
+  expect(capacity(state, cascade(0))).toBe(6)
+  expect(move(state, cascade(1), cascade(0), 7)).toBeNull()
+
+  const shorter = table([[card(10, 'spades')], sequence(9, 6), []], [card(1, 'clubs'), card(1, 'spades'), null, null])
+  expect(move(shorter, cascade(1), cascade(0), 6)?.cascades[0]).toEqual([card(10, 'spades'), ...sequence(9, 6)])
+})
+
+test('a sequence going into an empty cascade has the smaller capacity', () => {
+  // Two empty free cells and two empty cascades: 12 onto a card, but 6 into one of the empty cascades.
+  const state = table([[card(10, 'spades')], sequence(9, 7), [], []], [card(1, 'clubs'), card(1, 'spades'), null, null])
+
+  expect(capacity(state, cascade(0))).toBe(12)
+  expect(capacity(state, cascade(2))).toBe(6)
+  expect(move(state, cascade(1), cascade(2), 6)?.cascades[2]).toEqual(sequence(9, 7).slice(1))
+  expect(move(state, cascade(1), cascade(2), 7)).toBeNull()
+})
+
+test('a free cell or a foundation has a capacity of one card', () => {
+  const state = table([])
+
+  expect(capacity(state, freeCell(0))).toBe(1)
+  expect(capacity(state, foundation(0))).toBe(1)
+})
+
+test('a block at the foot of a cascade that is not a sequence is refused', () => {
+  const sameColour = table([[card(10, 'spades')], [card(9, 'hearts'), card(8, 'diamonds')]])
+  const wrongRank = table([[card(10, 'spades')], [card(9, 'hearts'), card(7, 'clubs')]])
+
+  expect(move(sameColour, cascade(1), cascade(2), 2)).toBeNull()
+  expect(move(wrongRank, cascade(1), cascade(2), 2)).toBeNull()
+})
+
+test('a move of no cards, more cards than the cascade holds, or onto its own place is refused', () => {
+  const state = table([sequence(9, 2), [card(10, 'spades')]])
+
+  expect(move(state, cascade(0), cascade(1), 0)).toBeNull()
+  expect(move(state, cascade(0), cascade(1), 3)).toBeNull()
+  expect(move(state, cascade(0), cascade(0), 1)).toBeNull()
+  expect(move(state, freeCell(0), cascade(1), 1)).toBeNull()
+})
+
+test('move never changes the state it was given', () => {
+  const state = table([[card(10, 'spades')], sequence(9, 2), [card(1, 'hearts')]])
+  const before = structuredClone(state)
+
+  move(state, cascade(1), cascade(0), 2)
+  move(state, cascade(2), foundation(0), 1)
+  move(state, cascade(1), freeCell(0), 1)
+
+  expect(state).toEqual(before)
+})
+
+test('isSolved is true only with all 52 cards on the foundations', () => {
+  const bySuit = (suit: Card['suit']) => fullDeck().filter((each) => each.suit === suit)
+  const foundations = [bySuit('hearts'), bySuit('diamonds'), bySuit('clubs'), bySuit('spades')]
+  const solved: GameState = {
+    cascades: Array.from({ length: 8 }, () => []),
+    freeCells: [null, null, null, null],
+    foundations,
+    past: [],
+  }
+  const king = foundations[3].at(-1)!
+  const oneShort: GameState = {
+    ...solved,
+    cascades: [[king], [], [], [], [], [], [], []],
+    foundations: [...foundations.slice(0, 3), foundations[3].slice(0, -1)],
+  }
+
+  expect(isSolved(solved)).toBe(true)
+  expect(isSolved(oneShort)).toBe(false)
+  expect(isSolved(newGame(seeded(6)))).toBe(false)
+})
+
+test('a move pushes the state before it onto past, and undo goes back one move', () => {
+  const state = table([[card(9, 'spades')], [card(8, 'hearts')]])
+  const once = move(state, cascade(1), cascade(0), 1)!
+  const twice = move(once, cascade(0), freeCell(0), 1)!
+
+  expect(twice.past).toHaveLength(2)
+  expect(undo(twice)).toEqual(once)
+  expect(undo(undo(twice))).toEqual(state)
+})
+
+test('undo does nothing with an empty past', () => {
+  const state = newGame(seeded(7))
+
+  expect(undo(state)).toBe(state)
 })

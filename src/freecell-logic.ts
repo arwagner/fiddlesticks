@@ -1,8 +1,8 @@
 // Pure FreeCell rules: no canvas or DOM, so a test can call every entry point.
-import { suits, type Suit } from './solitaire-rules'
+import { cardColor, suits, type Suit } from './solitaire-rules'
 
 // Colour works the same as in Klondike; re-exported so FreeCell's code reads it from one module.
-export { cardColor } from './solitaire-rules'
+export { cardColor }
 
 // One of the 52. FreeCell deals every card face up, so unlike Klondike's card it has no faceUp.
 export type Card = { suit: Suit; rank: number }
@@ -59,4 +59,137 @@ export function newGame(random: () => number = Math.random): GameState {
     foundations: Array.from({ length: FOUNDATION_COUNT }, () => []),
     past: [],
   }
+}
+
+const isEmptyCascade = (state: Layout, place: Place) =>
+  place.kind === 'cascade' && state.cascades[place.index]?.length === 0
+
+// The most cards one move can carry to `to`: (empty free cells + 1) × 2^(empty cascades), counting one fewer
+// empty cascade when `to` is one. A free cell or a foundation only ever takes one card.
+export function capacity(state: GameState, to: Place): number {
+  if (to.kind !== 'cascade') {
+    return 1
+  }
+
+  const emptyFreeCells = state.freeCells.filter((card) => card === null).length
+  const emptyCascades = state.cascades.filter((cascade) => cascade.length === 0).length
+  const usableCascades = emptyCascades - (isEmptyCascade(state, to) ? 1 : 0)
+
+  return (emptyFreeCells + 1) * 2 ** usableCascades
+}
+
+// Each card one rank below the one before it and the other colour.
+function isSequence(cards: Card[]): boolean {
+  return cards.every(
+    (card, index) =>
+      index === 0 || (card.rank === cards[index - 1].rank - 1 && cardColor(card) !== cardColor(cards[index - 1])),
+  )
+}
+
+// The `count` cards a move would take from `from`, or null if the rules don't let them go together.
+function cardsToTake(state: GameState, from: Place, count: number): Card[] | null {
+  if (from.kind === 'cascade') {
+    const cascade = state.cascades[from.index]
+
+    if (!cascade || count > cascade.length) {
+      return null
+    }
+
+    const cards = cascade.slice(cascade.length - count)
+
+    return isSequence(cards) ? cards : null
+  }
+
+  if (count !== 1) {
+    return null
+  }
+
+  const card = from.kind === 'free-cell' ? state.freeCells[from.index] : state.foundations[from.index]?.at(-1)
+
+  return card ? [card] : null
+}
+
+// Whether `cards` may be put down on `to`, leaving capacity aside.
+function canPutDown(state: GameState, cards: Card[], to: Place): boolean {
+  const [first] = cards
+
+  if (to.kind === 'cascade') {
+    const foot = state.cascades[to.index]?.at(-1)
+
+    if (!state.cascades[to.index]) {
+      return false
+    }
+
+    return !foot || (first.rank === foot.rank - 1 && cardColor(first) !== cardColor(foot))
+  }
+
+  if (to.kind === 'free-cell') {
+    return cards.length === 1 && state.freeCells[to.index] === null
+  }
+
+  const foundation = state.foundations[to.index]
+
+  if (!foundation || cards.length !== 1) {
+    return false
+  }
+
+  const top = foundation.at(-1)
+
+  return top ? first.suit === top.suit && first.rank === top.rank + 1 : first.rank === 1
+}
+
+function layoutOf(state: GameState): Layout {
+  return { cascades: state.cascades, freeCells: state.freeCells, foundations: state.foundations }
+}
+
+// Takes `count` cards from `from` and puts them on `to`, as one undoable step. Returns null if the rules
+// don't allow it; never changes `state`.
+export function move(state: GameState, from: Place, to: Place, count: number): GameState | null {
+  if (count < 1 || (from.kind === to.kind && from.index === to.index)) {
+    return null
+  }
+
+  const cards = cardsToTake(state, from, count)
+
+  if (!cards || count > capacity(state, to) || !canPutDown(state, cards, to)) {
+    return null
+  }
+
+  const cascades = state.cascades.map((cascade) => [...cascade])
+  const freeCells = [...state.freeCells]
+  const foundations = state.foundations.map((foundation) => [...foundation])
+
+  if (from.kind === 'cascade') {
+    cascades[from.index].splice(-count)
+  } else if (from.kind === 'free-cell') {
+    freeCells[from.index] = null
+  } else {
+    foundations[from.index].pop()
+  }
+
+  if (to.kind === 'cascade') {
+    cascades[to.index].push(...cards)
+  } else if (to.kind === 'free-cell') {
+    freeCells[to.index] = cards[0]
+  } else {
+    foundations[to.index].push(cards[0])
+  }
+
+  return { cascades, freeCells, foundations, past: [...state.past, layoutOf(state)] }
+}
+
+// All 52 cards on the foundations.
+export function isSolved(state: GameState): boolean {
+  return state.foundations.reduce((total, foundation) => total + foundation.length, 0) === 52
+}
+
+// Goes back one move. With nothing in `past` there is nothing to go back to, so the state comes back as it is.
+export function undo(state: GameState): GameState {
+  const previous = state.past.at(-1)
+
+  if (!previous) {
+    return state
+  }
+
+  return { ...previous, past: state.past.slice(0, -1) }
 }
