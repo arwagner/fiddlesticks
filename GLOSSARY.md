@@ -153,7 +153,7 @@ _Avoid_: Icon, glyph
 
 **Index**:
 A card's rank and pip printed together in a corner ("10♥"): large at the top left, smaller at the bottom
-right.
+right. The top one stays showing when another card fanned over it covers the rest.
 _Avoid_: Label, corner
 
 **Face**:
@@ -167,3 +167,60 @@ _Avoid_: Reverse, cover
 **Slot**:
 A place a card can go, drawn as a dashed outline when no card is on it.
 _Avoid_: Placeholder, space
+
+## FreeCell
+
+**Card**:
+One of the 52. In FreeCell every card is always face up.
+
+**Cascade**:
+One of the eight places the cards are dealt into at the start, each card overlapping the one before. Only
+the card at its foot can be played onto.
+_Avoid_: Column, tableau, pile
+
+**Free cell**:
+A place that holds a single card, any card. There are four.
+_Avoid_: Reserve, cell (that is Nonogram's), slot
+
+**Foundation**:
+A place where one suit is built up from Ace to King. There are four.
+_Avoid_: Home, goal
+
+**Place**:
+Any cascade, free cell or foundation, where a card can be taken from or put down.
+_Avoid_: Pile, spot, location
+
+**Arrangement**:
+Where every card is at one moment: the cascades, free cells and foundations, without the moves that led
+there. Undo goes back to the arrangement before the last move.
+_Avoid_: Layout (that is the board's geometry), position
+
+**Sequence**:
+Cards at the foot of a cascade that run down in rank and alternate colour.
+_Avoid_: Run (that is Nonogram's), stack
+
+**Capacity**:
+The most cards one move can carry: (empty free cells + 1) × 2^(empty cascades), counting one fewer empty
+cascade when the move goes into one.
+_Avoid_: Supermove, limit
+
+**Auto-play**:
+Moving safe cards up to the foundations without the player asking.
+_Avoid_: Auto-move, autocomplete
+
+**Safe card**:
+A card that no card left in play could still need to go onto it: it can go onto its foundation, and both
+cards of the other colour one rank lower are already on foundations. Aces and Twos are always safe.
+
+**Solved**:
+All 52 cards on the foundations.
+_Avoid_: Complete, won
+
+**Layout**:
+The board's geometry at one width: where every place and every card is drawn, and so what a point hits.
+_Avoid_: Arrangement (that is where the cards are), geometry
+
+**Fan step**:
+How far each card in a cascade sits below the one before it. A long cascade closes up its fan step to stay
+within the board's maximum height, but never below a card's index.
+_Avoid_: Offset, shift, spacing

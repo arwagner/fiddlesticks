@@ -1,3 +1,4 @@
+import { shuffled } from './shuffle'
 import {
   type Card,
   type Suit,
@@ -104,21 +105,8 @@ export function setupSolitaire(container: HTMLElement): void {
 
   const rect = () => canvas.getBoundingClientRect()
 
-  function shuffle<T>(values: T[]): T[] {
-    const next = [...values]
-
-    for (let index = next.length - 1; index > 0; index -= 1) {
-      const randomIndex = Math.floor(Math.random() * (index + 1))
-      const current = next[index]
-      next[index] = next[randomIndex]
-      next[randomIndex] = current
-    }
-
-    return next
-  }
-
   function dealNewGame(): void {
-    const dealt = dealFromDeck(shuffle(buildDeck()))
+    const dealt = dealFromDeck(shuffled(buildDeck()))
 
     stock = dealt.stock
     waste = []
