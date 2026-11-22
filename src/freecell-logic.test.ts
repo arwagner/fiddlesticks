@@ -320,10 +320,11 @@ test('a chain where one card going up frees the next all goes up', () => {
   ])
 })
 
-test('auto-play adds nothing to past', () => {
-  const state = table([[card(1, 'hearts')]])
+test('auto-play adds nothing to past, and keeps what is already there', () => {
+  const earlier = table([[card(1, 'hearts'), card(5, 'clubs')]])
+  const state = { ...table([[card(1, 'hearts')]]), past: [earlier] }
 
-  expect(autoPlay(state).past).toEqual([])
+  expect(autoPlay(state).past).toEqual([earlier])
 })
 
 test('a move sets off auto-play, and one undo brings back the state from before that move', () => {
