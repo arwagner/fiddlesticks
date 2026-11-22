@@ -191,3 +191,17 @@ cards of the other colour one rank lower are already on foundations. Aces and Tw
 **Solved**:
 All 52 cards on the foundations.
 _Avoid_: Complete, won
+
+**Layout**:
+The board's geometry at one width: where every place and every card is drawn, and so what a point hits.
+_Avoid_: Arrangement (that is where the cards are), geometry
+
+**Fan step**:
+How far each card in a cascade sits below the one before it. A long cascade closes up its fan step to stay
+within the board's maximum height, but never below a card's index.
+_Avoid_: Offset, shift, spacing
+
+**Index**:
+The strip at the top of a card that shows its rank and suit, which stays showing when another card covers
+the rest.
+_Avoid_: Corner, label
