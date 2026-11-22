@@ -5,8 +5,8 @@ import { type Rect, type Suit, CARD_W, INDEX_BASELINE, cardColor, rankLabels, pi
 // Trebuchet first for the rank digits; the symbol fonts back it up wherever it lacks a suit pip.
 const CARD_FONT = '"Trebuchet MS", "Apple Symbols", "Segoe UI Symbol", sans-serif'
 
-export const RED_INK = '#cf3d48'
-export const BLACK_INK = '#1f2d3a'
+const RED_INK = '#cf3d48'
+const BLACK_INK = '#1f2d3a'
 
 // The sizes below are tuned for a card CARD_W wide and grow with the card.
 function scaleOf(rect: Rect): number {
