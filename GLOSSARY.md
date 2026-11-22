@@ -158,8 +158,8 @@ Any cascade, free cell or foundation, where a card can be taken from or put down
 _Avoid_: Pile, spot, location
 
 **Arrangement**:
-Where every card is at one moment: the cascades, free cells and foundations, without the history. Undo
-steps back to the arrangement before.
+Where every card is at one moment: the cascades, free cells and foundations, without the moves that led
+there. Undo goes back to the arrangement before the last move.
 _Avoid_: Layout (that is the board's geometry), position
 
 **Sequence**:
@@ -190,3 +190,17 @@ A card that no card left in play could still need to go onto it.
 **Solved**:
 All 52 cards on the foundations.
 _Avoid_: Complete, won
+
+**Layout**:
+The board's geometry at one width: where every place and every card is drawn, and so what a point hits.
+_Avoid_: Arrangement (that is where the cards are), geometry
+
+**Fan step**:
+How far each card in a cascade sits below the one before it. A long cascade closes up its fan step to stay
+within the board's maximum height, but never below a card's index.
+_Avoid_: Offset, shift, spacing
+
+**Index**:
+The strip at the top of a card that shows its rank and suit, which stays showing when another card covers
+the rest.
+_Avoid_: Corner, label
