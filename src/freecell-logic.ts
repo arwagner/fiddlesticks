@@ -200,6 +200,41 @@ export function undo(state: GameState): GameState {
   return { ...previous, past: state.past.slice(0, -1) }
 }
 
+// Cards to take from one place and put on another, in the shape `move` takes.
+export type Move = { from: Place; to: Place; count: number }
+
+// Where a tapped card goes, so a tap can play it without a drag. Takes the card at `index` in `from`, and the
+// cards below it in a cascade, and tries in turn: a foundation (one card only), the first cascade that isn't
+// empty, the first empty cascade, then the first empty free cell (one card only). Returns the first move
+// `move` accepts, or null. A card on a foundation stays there: a tap never takes it back down.
+export function tapMove(state: GameState, from: Place, index: number): Move | null {
+  if (from.kind === 'foundation') {
+    return null
+  }
+
+  const size = from.kind === 'cascade' ? (state.cascades[from.index]?.length ?? 0) : 1
+  const count = size - index
+
+  if (!Number.isInteger(index) || index < 0 || count < 1 || !cardsToTake(state, from, count)) {
+    return null
+  }
+
+  const places = (kind: Place['kind'], length: number): Place[] =>
+    Array.from({ length }, (_, placeIndex) => ({ kind, index: placeIndex }))
+  const cascades = places('cascade', CASCADE_COUNT)
+  // Moving a whole cascade into an empty one, or a free cell's card into another free cell, changes nothing.
+  const takesWholeCascade = from.kind === 'cascade' && count === size
+  const candidates = [
+    ...(count === 1 ? places('foundation', FOUNDATION_COUNT) : []),
+    ...cascades.filter((to) => !isEmptyCascade(state, to)),
+    ...(takesWholeCascade ? [] : cascades.filter((to) => isEmptyCascade(state, to))),
+    ...(count === 1 && from.kind !== 'free-cell' ? places('free-cell', FREE_CELL_COUNT) : []),
+  ]
+  const to = candidates.find((place) => move(state, from, place, count) !== null)
+
+  return to ? { from, to, count } : null
+}
+
 // The foundation `card` can go onto now, or null if none will take it.
 function foundationFor(state: Arrangement, card: Card): Place | null {
   const index = state.foundations.findIndex((foundation) => goesOnFoundation(foundation, card))
