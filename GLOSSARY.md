@@ -134,3 +134,44 @@ _Avoid_: Complete, won
 Either one pair with more bridges than the solution, pointed out and left as it is, or one pair the solver can
 settle from the bridges already laid, set to its level.
 _Avoid_: Tip, clue
+
+## FreeCell
+
+**Card**:
+One of the 52. In FreeCell every card is always face up.
+
+**Cascade**:
+One of the eight columns of cards dealt at the start. Only the card at its foot can be played onto.
+_Avoid_: Column, tableau, pile
+
+**Free cell**:
+One of the four slots that holds a single card.
+_Avoid_: Reserve, cell (that is Nonogram's), slot
+
+**Foundation**:
+One of the four piles built up by suit from Ace to King.
+_Avoid_: Home, goal
+
+**Place**:
+Any cascade, free cell or foundation, where a card can be taken from or put down.
+_Avoid_: Pile, spot, location
+
+**Sequence**:
+Cards at the foot of a cascade that run down in rank and alternate colour.
+_Avoid_: Run (that is Nonogram's), stack
+
+**Capacity**:
+The most cards one move can carry: (empty free cells + 1) × 2^(empty cascades), counting one fewer empty
+cascade when the move goes into one.
+_Avoid_: Supermove, limit
+
+**Auto-play**:
+Moving safe cards up to the foundations without the player asking.
+_Avoid_: Auto-move, autocomplete
+
+**Safe card**:
+A card that no card left in play could still need to go onto it.
+
+**Solved**:
+All 52 cards on the foundations.
+_Avoid_: Complete, won
