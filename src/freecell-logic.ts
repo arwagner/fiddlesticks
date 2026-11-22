@@ -215,22 +215,22 @@ export function isSafe(state: Arrangement, card: Card): boolean {
   }
 
   const onFoundations = state.foundations.flat()
-  const otherColourBelow = suits.filter((suit) => cardColor({ suit }) !== cardColor(card))
+  const otherColourSuits = suits.filter((suit) => cardColor({ suit }) !== cardColor(card))
 
-  return otherColourBelow.every((suit) =>
-    onFoundations.some((each) => each.suit === suit && each.rank === card.rank - 1),
+  return otherColourSuits.every((suit) =>
+    onFoundations.some((placed) => placed.suit === suit && placed.rank === card.rank - 1),
   )
 }
 
 // Every place auto-play may take a card from: the foot of each cascade, then each free cell.
-const autoPlaySources: Place[] = [
+const autoPlayPlaces: Place[] = [
   ...Array.from({ length: CASCADE_COUNT }, (_, index): Place => ({ kind: 'cascade', index })),
   ...Array.from({ length: FREE_CELL_COUNT }, (_, index): Place => ({ kind: 'free-cell', index })),
 ]
 
 // One safe card's move up to its foundation, or null if no card is safe.
 function nextSafeMove(state: Arrangement): { from: Place; to: Place } | null {
-  for (const from of autoPlaySources) {
+  for (const from of autoPlayPlaces) {
     const card = cardAt(state, from)
     const to = card && isSafe(state, card) ? foundationFor(state, card) : null
 
