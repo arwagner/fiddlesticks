@@ -14,6 +14,9 @@ const layout = freeCellLayout(WIDTH)
 // Each card index drawn since the canvas was last cleared: its text ("9♠") and where it was written.
 let written: { text: string; x: number; y: number }[] = []
 
+// Tells the board its container has been resized, as the browser's ResizeObserver would.
+let resize: () => void = () => undefined
+
 // jsdom has no layout and draws nothing: the container reports a width, the canvas sits at the page's origin
 // as wide as the container, and its context only notes the card indexes written on it.
 function stubLayoutAndCanvas(): void {
@@ -41,6 +44,9 @@ function stubLayoutAndCanvas(): void {
   HTMLCanvasElement.prototype.getBoundingClientRect = () => new DOMRect(0, 0, WIDTH, 600)
   Object.defineProperty(HTMLCanvasElement.prototype, 'clientWidth', { value: WIDTH, configurable: true })
   globalThis.ResizeObserver = class {
+    constructor(callback: ResizeObserverCallback) {
+      resize = () => callback([], this as unknown as ResizeObserver)
+    }
     observe() {}
     unobserve() {}
     disconnect() {}
@@ -102,7 +108,8 @@ function table(
 
 function mount(createGame: () => GameState) {
   const element = document.createElement('div')
-  Object.defineProperty(element, 'clientWidth', { value: WIDTH })
+  let width = WIDTH
+  Object.defineProperty(element, 'clientWidth', { get: () => width })
   document.body.appendChild(element)
   setupFreeCell(element, createGame)
 
@@ -113,6 +120,10 @@ function mount(createGame: () => GameState) {
 
   return {
     element,
+    resizeTo: (newWidth: number) => {
+      width = newWidth
+      resize()
+    },
     // The middle of a place: a free cell's or foundation's card, or a cascade's first card.
     place: (place: Place) => at(placeRect(place, layout)),
     // A cascade's card, on the strip that still shows when cards lie over it, in the game as dealt.
@@ -266,4 +277,30 @@ test('New game deals again', () => {
   })
   expect(board.status()).toBe('0 of 52 cards on the foundations')
   expect(board.undoButton().disabled).toBe(true)
+})
+
+// One pointer's event, sent on its own: which pointer sends it is the point of the test.
+function pointer(type: string, aim: () => Point, pointerId: number): void {
+  const { target, clientX, clientY } = aim()
+  const event = new MouseEvent(type, { bubbles: true, cancelable: true, button: 0, clientX, clientY })
+  Object.defineProperty(event, 'pointerId', { value: pointerId })
+  target.dispatchEvent(event)
+}
+
+test('a second finger neither takes over nor drops the cards the first finger is dragging', () => {
+  const state = table([[card(13, 'clubs'), card(9, 'spades')], [card(10, 'hearts')], [card(1, 'diamonds')]])
+  const board = mount(() => state)
+
+  pointer('pointerdown', board.card(state, 0, 1), 1)
+  pointer('pointermove', board.place(freeCell(2)), 1)
+
+  // A second finger taps the Ace, which a tap would send to a foundation, and lifts off over a free cell.
+  pointer('pointerdown', board.card(state, 2, 0), 2)
+  pointer('pointerup', board.place(freeCell(0)), 2)
+  expect(whereIs('A♦')).toEqual(cascade(2))
+  expect(whereIs('9♠')).not.toEqual(freeCell(0))
+
+  pointer('pointermove', board.place(cascade(1)), 1)
+  pointer('pointerup', board.place(cascade(1)), 1)
+  expect(whereIs('9♠')).toEqual(cascade(1))
 })

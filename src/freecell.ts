@@ -32,9 +32,10 @@ import { drawCardFace, drawEmptySlot } from './card-draw'
 // How far, in board pixels, a press may wander and still count as a tap rather than a drag.
 const TAP_SLOP = 6
 
-// The cards a press has picked up: where they came from, the rects they were drawn in there, and where the
-// pointer went down, so they follow the pointer by the distance it has moved.
+// The cards a press has picked up: the pointer that pressed, where the cards came from, the rects they were
+// drawn in there, and where the pointer went down, so they follow the pointer by the distance it has moved.
 type Lifted = {
+  pointerId: number
   from: Place
   index: number
   cards: Card[]
@@ -195,7 +196,7 @@ export function setupFreeCell(container: HTMLElement, createGame: () => GameStat
   }
 
   // What a press on `point` picks up, with the rects the cards are drawn in now.
-  function lift(point: Point): Lifted | null {
+  function lift(pointerId: number, point: Point): Lifted | null {
     const hit = hitTest(point, state, layout)
     const index = hit?.cardIndex ?? 0
     const cards = hit ? cardsFrom(state, hit.place, index) : []
@@ -209,15 +210,18 @@ export function setupFreeCell(container: HTMLElement, createGame: () => GameStat
         ? cascadeCardRects(hit.place.index, state, layout).slice(index)
         : [placeRect(hit.place, layout)]
 
-    return { from: hit.place, index, cards, rects, start: point, at: point, dragging: false }
+    return { pointerId, from: hit.place, index, cards, rects, start: point, at: point, dragging: false }
   }
 
+  // Whether an event comes from the pointer holding the lifted cards. A second finger neither lifts nor drops.
+  const isHolding = (event: PointerEvent): boolean => lifted?.pointerId === event.pointerId
+
   canvas.addEventListener('pointerdown', (event) => {
-    if (event.button !== 0) {
+    if (event.button !== 0 || lifted) {
       return
     }
 
-    lifted = lift(pointerAt(event))
+    lifted = lift(event.pointerId, pointerAt(event))
 
     if (lifted) {
       event.preventDefault()
@@ -225,7 +229,7 @@ export function setupFreeCell(container: HTMLElement, createGame: () => GameStat
   })
 
   window.addEventListener('pointermove', (event) => {
-    if (!lifted) {
+    if (!lifted || !isHolding(event)) {
       return
     }
 
@@ -236,11 +240,12 @@ export function setupFreeCell(container: HTMLElement, createGame: () => GameStat
 
   window.addEventListener('pointerup', (event) => {
     const ended = lifted
-    lifted = null
 
-    if (!ended) {
+    if (!ended || !isHolding(event)) {
       return
     }
+
+    lifted = null
 
     if (ended.dragging) {
       const hit = hitTest(pointerAt(event), state, layout)
@@ -259,9 +264,11 @@ export function setupFreeCell(container: HTMLElement, createGame: () => GameStat
     render()
   })
 
-  window.addEventListener('pointercancel', () => {
-    lifted = null
-    render()
+  window.addEventListener('pointercancel', (event) => {
+    if (isHolding(event)) {
+      lifted = null
+      render()
+    }
   })
 
   undoButton.addEventListener('click', () => {
