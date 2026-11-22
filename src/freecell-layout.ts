@@ -30,7 +30,7 @@ export type Layout = {
   cardW: number
   cardH: number
   gapX: number
-  marginX: number // to the first column, so the board sits in the middle of the container
+  marginX: number // to the first cascade, so the board sits in the middle of the container
   marginY: number
   cascadeY: number // the top of every cascade's first card
   fanStep: number
@@ -57,19 +57,20 @@ export function freeCellLayout(containerWidth: number): Layout {
   }
 }
 
-function columnX(column: number, layout: Layout): number {
-  return layout.marginX + column * (layout.cardW + layout.gapX)
+function cascadeX(cascade: number, layout: Layout): number {
+  return layout.marginX + cascade * (layout.cardW + layout.gapX)
 }
 
-// The free cells take the top row's first four columns and the foundations its last four.
-function placeColumn(place: Place): number {
+// The cascade a place lines up with: a cascade is its own, the free cells sit over the first four and the
+// foundations over the last four.
+function alignedCascade(place: Place): number {
   return place.kind === 'foundation' ? CASCADE_COUNT - FOUNDATION_COUNT + place.index : place.index
 }
 
 // Where a place's card sits, or the outline of its empty space; for a cascade, where its first card goes.
 export function placeRect(place: Place, layout: Layout): Rect {
   return {
-    x: columnX(placeColumn(place), layout),
+    x: cascadeX(alignedCascade(place), layout),
     y: place.kind === 'cascade' ? layout.cascadeY : layout.marginY,
     w: layout.cardW,
     h: layout.cardH,
