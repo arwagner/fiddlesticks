@@ -13,6 +13,7 @@ import {
   places,
   type Card,
   type GameState,
+  type Move,
   type Place,
 } from './freecell-logic'
 import {
@@ -189,7 +190,7 @@ export function setupFreeCell(container: HTMLElement, createGame: () => GameStat
   }
 
   // A move the rules refuse gives null, and the board stays as it was: the lifted cards go back.
-  function play(from: Place, to: Place, count: number): void {
+  function play({ from, to, count }: Move): void {
     state = moveThenAutoPlay(state, from, to, count) ?? state
   }
 
@@ -245,13 +246,13 @@ export function setupFreeCell(container: HTMLElement, createGame: () => GameStat
       const hit = hitTest(pointerAt(event), state, layout)
 
       if (hit) {
-        play(ended.from, hit.place, ended.cards.length)
+        play({ from: ended.from, to: hit.place, count: ended.cards.length })
       }
     } else {
       const tapped = tapMove(state, ended.from, ended.index)
 
       if (tapped) {
-        play(tapped.from, tapped.to, tapped.count)
+        play(tapped)
       }
     }
 
