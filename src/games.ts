@@ -26,4 +26,9 @@ export const games: GameItem[] = [
     genre: 'Puzzle',
     description: 'Join the islands. Each number says how many bridges touch it.',
   },
+  {
+    title: 'FreeCell',
+    genre: 'Card Game',
+    description: 'Every card is dealt face up. Use the four free cells to build each suit up from Ace to King.',
+  },
 ]

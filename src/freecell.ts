@@ -1,0 +1,295 @@
+// The FreeCell board: draws what freecell-logic.ts and freecell-layout.ts give it, and turns presses, drags and
+// taps into calls on them. No rule and no piece of geometry is decided here.
+import {
+  newGame,
+  moveThenAutoPlay,
+  tapMove,
+  undo,
+  isSolved,
+  cardsOnFoundations,
+  cardsFrom,
+  samePlace,
+  CARD_COUNT,
+  places,
+  type Card,
+  type GameState,
+  type Move,
+  type Place,
+} from './freecell-logic'
+import {
+  freeCellLayout,
+  placeRect,
+  cascadeCardRects,
+  boardHeight,
+  hitTest,
+  boardPoint,
+  type Layout,
+  type Point,
+  type Rect,
+} from './freecell-layout'
+import { drawCardFace, drawEmptySlot } from './card-draw'
+
+// How far, in board pixels, a press may wander and still count as a tap rather than a drag.
+const TAP_SLOP = 6
+
+// The cards a press has picked up: the pointer that pressed, where the cards came from, the rects they were
+// drawn in there, and where the pointer went down, so they follow the pointer by the distance it has moved.
+type Lifted = {
+  pointerId: number
+  from: Place
+  index: number
+  cards: Card[]
+  rects: Rect[]
+  start: Point
+  at: Point
+  dragging: boolean
+}
+
+export function setupFreeCell(container: HTMLElement, createGame: () => GameState = newGame): void {
+  container.innerHTML = `
+    <div class="freecell">
+      <div class="freecell-toolbar">
+        <button id="freecell-new" type="button">New game</button>
+        <button id="freecell-undo" type="button">Undo</button>
+        <p id="freecell-status" aria-live="polite"></p>
+      </div>
+      <p class="freecell-help">Drag a card or a sequence to move it. Tap a card to send it where it can go.</p>
+      <canvas id="freecell-canvas" aria-label="FreeCell board"></canvas>
+    </div>
+  `
+
+  const canvasElement = container.querySelector<HTMLCanvasElement>('#freecell-canvas')
+  const statusElement = container.querySelector<HTMLParagraphElement>('#freecell-status')
+  const newButtonElement = container.querySelector<HTMLButtonElement>('#freecell-new')
+  const undoButtonElement = container.querySelector<HTMLButtonElement>('#freecell-undo')
+
+  if (!canvasElement || !statusElement || !newButtonElement || !undoButtonElement) {
+    throw new Error('FreeCell UI elements are missing')
+  }
+
+  const context = canvasElement.getContext('2d')
+
+  if (!context) {
+    throw new Error('2D canvas context is not available')
+  }
+
+  const canvas = canvasElement
+  const status = statusElement
+  const undoButton = undoButtonElement
+  const ctx = context
+
+  let state = createGame()
+  let lifted: Lifted | null = null
+  let layout: Layout = freeCellLayout(container.clientWidth)
+
+  // The canvas is as wide as the container and as tall as the board, at the screen's pixel density.
+  function fitCanvas(): void {
+    layout = freeCellLayout(container.clientWidth)
+
+    const ratio = window.devicePixelRatio || 1
+    const width = Math.round(layout.width * ratio)
+    const height = Math.round(boardHeight(state, layout) * ratio)
+
+    if (canvas.width !== width || canvas.height !== height) {
+      canvas.width = width
+      canvas.height = height
+    }
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0)
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0)
+  }
+
+  // Where an event's pointer is on the board, measured from inside the canvas's border.
+  function pointerAt(event: MouseEvent): Point {
+    const bounds = canvas.getBoundingClientRect()
+    const content = {
+      left: bounds.left + canvas.clientLeft,
+      top: bounds.top + canvas.clientTop,
+      width: canvas.clientWidth,
+    }
+
+    return boardPoint(event.clientX, event.clientY, content, layout)
+  }
+
+  function isLifted(place: Place, index: number): boolean {
+    return !!lifted && lifted.dragging && samePlace(lifted.from, place) && index >= lifted.index
+  }
+
+  function drawTopRow(): void {
+    places('free-cell').forEach((place) => {
+      const card = state.freeCells[place.index]
+      const rect = placeRect(place, layout)
+
+      if (card && !isLifted(place, 0)) {
+        drawCardFace(ctx, card, rect)
+      } else {
+        drawEmptySlot(ctx, rect)
+      }
+    })
+
+    places('foundation').forEach((place) => {
+      const card = state.foundations[place.index].at(-1)
+      const rect = placeRect(place, layout)
+
+      if (card) {
+        drawCardFace(ctx, card, rect)
+      } else {
+        drawEmptySlot(ctx, rect, 'A')
+      }
+    })
+  }
+
+  function drawCascades(): void {
+    places('cascade').forEach((place) => {
+      const cards = state.cascades[place.index]
+
+      if (cards.length === 0) {
+        drawEmptySlot(ctx, placeRect(place, layout))
+        return
+      }
+
+      cascadeCardRects(place.index, state, layout).forEach((rect, index) => {
+        if (!isLifted(place, index)) {
+          drawCardFace(ctx, cards[index], rect)
+        }
+      })
+    })
+  }
+
+  function drawLifted(): void {
+    const held = lifted
+
+    if (!held?.dragging) {
+      return
+    }
+
+    const dx = held.at.x - held.start.x
+    const dy = held.at.y - held.start.y
+
+    held.rects.forEach((rect, index) => {
+      drawCardFace(ctx, held.cards[index], { ...rect, x: rect.x + dx, y: rect.y + dy })
+    })
+  }
+
+  function draw(): void {
+    fitCanvas()
+    drawTopRow()
+    drawCascades()
+    drawLifted()
+  }
+
+  function render(): void {
+    const solved = isSolved(state)
+
+    status.textContent = solved
+      ? `Solved! All ${CARD_COUNT} cards are on the foundations.`
+      : `${cardsOnFoundations(state)} of ${CARD_COUNT} cards on the foundations`
+    status.classList.toggle('freecell-status-solved', solved)
+    undoButton.disabled = state.past.length === 0
+    draw()
+  }
+
+  // A move the rules refuse gives null, and the board stays as it was: the lifted cards go back.
+  function play({ from, to, count }: Move): void {
+    state = moveThenAutoPlay(state, from, to, count) ?? state
+  }
+
+  // What a press on `point` picks up, with the rects the cards are drawn in now.
+  function lift(pointerId: number, point: Point): Lifted | null {
+    const hit = hitTest(point, state, layout)
+    const index = hit?.cardIndex ?? 0
+    const cards = hit ? cardsFrom(state, hit.place, index) : []
+
+    if (!hit || cards.length === 0) {
+      return null
+    }
+
+    const rects =
+      hit.place.kind === 'cascade'
+        ? cascadeCardRects(hit.place.index, state, layout).slice(index)
+        : [placeRect(hit.place, layout)]
+
+    return { pointerId, from: hit.place, index, cards, rects, start: point, at: point, dragging: false }
+  }
+
+  // Whether an event comes from the pointer holding the lifted cards. A second finger neither lifts nor drops.
+  const isHolding = (event: PointerEvent): boolean => lifted?.pointerId === event.pointerId
+
+  canvas.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0 || lifted) {
+      return
+    }
+
+    lifted = lift(event.pointerId, pointerAt(event))
+
+    if (lifted) {
+      event.preventDefault()
+    }
+  })
+
+  window.addEventListener('pointermove', (event) => {
+    if (!lifted || !isHolding(event)) {
+      return
+    }
+
+    lifted.at = pointerAt(event)
+    lifted.dragging ||= Math.hypot(lifted.at.x - lifted.start.x, lifted.at.y - lifted.start.y) > TAP_SLOP
+    draw()
+  })
+
+  window.addEventListener('pointerup', (event) => {
+    const ended = lifted
+
+    if (!ended || !isHolding(event)) {
+      return
+    }
+
+    lifted = null
+
+    if (ended.dragging) {
+      const hit = hitTest(pointerAt(event), state, layout)
+
+      if (hit) {
+        play({ from: ended.from, to: hit.place, count: ended.cards.length })
+      }
+    } else {
+      const tapped = tapMove(state, ended.from, ended.index)
+
+      if (tapped) {
+        play(tapped)
+      }
+    }
+
+    render()
+  })
+
+  window.addEventListener('pointercancel', (event) => {
+    if (isHolding(event)) {
+      lifted = null
+      render()
+    }
+  })
+
+  undoButton.addEventListener('click', () => {
+    state = undo(state)
+    render()
+  })
+
+  newButtonElement.addEventListener('click', () => {
+    state = createGame()
+    lifted = null
+    render()
+  })
+
+  // The lifted cards were measured on the old layout and no longer line up with a new one, so they go back.
+  new ResizeObserver(() => {
+    if (container.clientWidth !== layout.width) {
+      lifted = null
+    }
+
+    draw()
+  }).observe(container)
+
+  render()
+}

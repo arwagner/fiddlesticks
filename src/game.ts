@@ -5,6 +5,7 @@ import { setupNonogram } from './nonogram'
 import { setupDecant } from './decant'
 import { setupPipes } from './pipes'
 import { setupBridges } from './bridges'
+import { setupFreeCell } from './freecell'
 
 const app = document.querySelector<HTMLDivElement>('#app')
 
@@ -31,6 +32,7 @@ const launchers = new Map<string, Launcher>([
   [slugify('Decant'), { rootId: 'decant-root', setup: setupDecant }],
   [slugify('Pipes'), { rootId: 'pipes-root', setup: (container) => setupPipes(container) }],
   [slugify('Bridges'), { rootId: 'bridges-root', setup: (container) => setupBridges(container) }],
+  [slugify('FreeCell'), { rootId: 'freecell-root', setup: (container) => setupFreeCell(container) }],
 ])
 
 const gameMap = new Map(games.map((game) => [slugify(game.title), game]))

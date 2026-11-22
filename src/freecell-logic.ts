@@ -1,6 +1,6 @@
 // Pure FreeCell rules: no canvas or DOM, so a test can call every entry point.
 import { shuffled } from './shuffle'
-import { cardColor, suits, type Suit } from './solitaire-rules'
+import { cardColor, suits, type Suit } from './cards'
 
 // Colour works the same as in Klondike; re-exported so FreeCell's code reads it from one module.
 export { cardColor }
@@ -26,6 +26,20 @@ export type GameState = Arrangement & {
 export const CASCADE_COUNT = 8
 export const FREE_CELL_COUNT = 4
 export const FOUNDATION_COUNT = 4
+// Every card in the deck.
+export const CARD_COUNT = 52
+
+// How many places of each kind the board has.
+const PLACE_COUNTS: Record<Place['kind'], number> = {
+  cascade: CASCADE_COUNT,
+  'free-cell': FREE_CELL_COUNT,
+  foundation: FOUNDATION_COUNT,
+}
+
+// Every place of one kind, in order.
+export function places(kind: Place['kind']): Place[] {
+  return Array.from({ length: PLACE_COUNTS[kind] }, (_, index) => ({ kind, index }))
+}
 
 // The 52 cards in suit order, Ace to King within each suit.
 export function fullDeck(): Card[] {
@@ -87,6 +101,28 @@ function cardAt(state: Arrangement, place: Place): Card | null {
         : [state.freeCells[place.index]]
 
   return pile?.at(-1) ?? null
+}
+
+// The cards a press on the card at `index` in `from` picks up: that card and, in a cascade, every card below
+// it. A free cell's card is at index 0. Empty when no card is there, or on a foundation, which neither a tap
+// nor a drag takes back down.
+export function cardsFrom(state: Arrangement, from: Place, index: number): Card[] {
+  if (!Number.isInteger(index) || index < 0) {
+    return []
+  }
+
+  if (from.kind === 'cascade') {
+    return state.cascades[from.index]?.slice(index) ?? []
+  }
+
+  const card = from.kind === 'free-cell' && index === 0 ? state.freeCells[from.index] : null
+
+  return card ? [card] : []
+}
+
+// Whether two places are the same one.
+export function samePlace(a: Place, b: Place): boolean {
+  return a.kind === b.kind && a.index === b.index
 }
 
 // The `count` cards a move would take from `from`, or null if the rules don't let them go together.
@@ -151,7 +187,7 @@ function arrangementOf(state: GameState): Arrangement {
 // Takes `count` cards from `from` and puts them on `to`, as one undoable step. Returns null if the rules
 // don't allow it; never changes `state`.
 export function move(state: GameState, from: Place, to: Place, count: number): GameState | null {
-  if (!Number.isInteger(count) || count < 1 || (from.kind === to.kind && from.index === to.index)) {
+  if (!Number.isInteger(count) || count < 1 || samePlace(from, to)) {
     return null
   }
 
@@ -184,9 +220,14 @@ export function move(state: GameState, from: Place, to: Place, count: number): G
   return { cascades, freeCells, foundations, past: [...state.past, arrangementOf(state)] }
 }
 
+// How many cards are on the foundations, from 0 to 52.
+export function cardsOnFoundations(state: Arrangement): number {
+  return state.foundations.reduce((total, foundation) => total + foundation.length, 0)
+}
+
 // All 52 cards on the foundations.
 export function isSolved(state: GameState): boolean {
-  return state.foundations.reduce((total, foundation) => total + foundation.length, 0) === 52
+  return cardsOnFoundations(state) === CARD_COUNT
 }
 
 // Goes back one move. With nothing in `past` there is nothing to go back to, so the state comes back as it is.
@@ -198,41 +239,6 @@ export function undo(state: GameState): GameState {
   }
 
   return { ...previous, past: state.past.slice(0, -1) }
-}
-
-// Cards to take from one place and put on another, in the shape `move` takes.
-export type Move = { from: Place; to: Place; count: number }
-
-// Where a tapped card goes, so a tap can play it without a drag. Takes the card at `index` in `from`, and the
-// cards below it in a cascade, and tries in turn: a foundation (one card only), the first cascade that isn't
-// empty, the first empty cascade, then the first empty free cell (one card only). Returns the first move
-// `move` accepts, or null. A card on a foundation stays there: a tap never takes it back down.
-export function tapMove(state: GameState, from: Place, index: number): Move | null {
-  if (from.kind === 'foundation') {
-    return null
-  }
-
-  const size = from.kind === 'cascade' ? (state.cascades[from.index]?.length ?? 0) : 1
-  const count = size - index
-
-  if (!Number.isInteger(index) || index < 0 || count < 1 || !cardsToTake(state, from, count)) {
-    return null
-  }
-
-  const places = (kind: Place['kind'], length: number): Place[] =>
-    Array.from({ length }, (_, placeIndex) => ({ kind, index: placeIndex }))
-  const cascades = places('cascade', CASCADE_COUNT)
-  // Moving a whole cascade into an empty one, or a free cell's card into another free cell, changes nothing.
-  const takesWholeCascade = from.kind === 'cascade' && count === size
-  const candidates = [
-    ...(count === 1 ? places('foundation', FOUNDATION_COUNT) : []),
-    ...cascades.filter((to) => !isEmptyCascade(state, to)),
-    ...(takesWholeCascade ? [] : cascades.filter((to) => isEmptyCascade(state, to))),
-    ...(count === 1 && from.kind !== 'free-cell' ? places('free-cell', FREE_CELL_COUNT) : []),
-  ]
-  const to = candidates.find((place) => move(state, from, place, count) !== null)
-
-  return to ? { from, to, count } : null
 }
 
 // The foundation `card` can go onto now, or null if none will take it.
@@ -262,10 +268,7 @@ export function isSafe(state: Arrangement, card: Card): boolean {
 }
 
 // Every place auto-play may take a card from: the foot of each cascade, then each free cell.
-const autoPlayPlaces: Place[] = [
-  ...Array.from({ length: CASCADE_COUNT }, (_, index): Place => ({ kind: 'cascade', index })),
-  ...Array.from({ length: FREE_CELL_COUNT }, (_, index): Place => ({ kind: 'free-cell', index })),
-]
+const autoPlayPlaces: Place[] = [...places('cascade'), ...places('free-cell')]
 
 // One safe card's move up to its foundation, or null if no card is safe.
 function nextSafeMove(state: Arrangement): { from: Place; to: Place } | null {
@@ -296,4 +299,32 @@ export function moveThenAutoPlay(state: GameState, from: Place, to: Place, count
   const next = move(state, from, to, count)
 
   return next && autoPlay(next)
+}
+
+// Cards to take from one place and put on another, in the shape `move` takes.
+export type Move = { from: Place; to: Place; count: number }
+
+// Where a tapped card goes, so a tap can play it without a drag. Takes the card at `index` in `from`, and the
+// cards below it in a cascade, and tries in turn: a foundation (one card only), the first cascade that isn't
+// empty, the first empty cascade, then the first empty free cell (one card only). Returns the first move
+// `move` accepts, or null. A card on a foundation stays there: a tap never takes it back down.
+export function tapMove(state: GameState, from: Place, index: number): Move | null {
+  const count = cardsFrom(state, from, index).length
+
+  if (count === 0 || !cardsToTake(state, from, count)) {
+    return null
+  }
+
+  const cascades = places('cascade')
+  // Moving a whole cascade into an empty one, or a free cell's card into another free cell, changes nothing.
+  const takesWholeCascade = from.kind === 'cascade' && index === 0
+  const candidates = [
+    ...(count === 1 ? places('foundation') : []),
+    ...cascades.filter((to) => !isEmptyCascade(state, to)),
+    ...(takesWholeCascade ? [] : cascades.filter((to) => isEmptyCascade(state, to))),
+    ...(count === 1 && from.kind !== 'free-cell' ? places('free-cell') : []),
+  ]
+  const to = candidates.find((place) => move(state, from, place, count) !== null)
+
+  return to ? { from, to, count } : null
 }

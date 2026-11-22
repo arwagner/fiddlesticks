@@ -1,7 +1,16 @@
 import { test, expect } from 'vitest'
 import { seeded } from './seeded.test-helper'
 import { newGame, fullDeck, type GameState, type Place } from './freecell-logic'
-import { freeCellLayout, placeRect, cascadeCardRects, fanStep, hitTest, type Rect } from './freecell-layout'
+import {
+  freeCellLayout,
+  placeRect,
+  cascadeCardRects,
+  fanStep,
+  hitTest,
+  boardHeight,
+  boardPoint,
+  type Rect,
+} from './freecell-layout'
 
 const PHONE = 360
 
@@ -139,4 +148,30 @@ test('points in the gaps between places hit nothing', () => {
   expect(hitTest({ x: freeCell.x + freeCell.w + layout.gapX / 2, y: freeCell.y + 10 }, state, layout)).toBeNull()
   expect(hitTest({ x: cascade.x + 10, y: (freeCell.y + freeCell.h + cascade.y) / 2 }, state, layout)).toBeNull()
   expect(hitTest({ x: foot.x + 10, y: foot.y + foot.h + 10 }, state, layout)).toBeNull()
+})
+
+test('the board reaches down to the foot of its longest cascade, and a margin below', () => {
+  const layout = freeCellLayout(800)
+  const state = withLongCascade()
+  const foot = cascadeCardRects(1, state, layout).at(-1)!
+
+  expect(boardHeight(state, layout)).toBe(foot.y + foot.h + layout.marginY)
+  expect(boardHeight(state, layout)).toBeLessThanOrEqual(layout.maxHeight)
+})
+
+test('with every cascade empty the board still has room for one card in each', () => {
+  const layout = freeCellLayout(800)
+  const state = { ...newGame(seeded(8)), cascades: Array.from({ length: 8 }, () => []) }
+
+  expect(boardHeight(state, layout)).toBe(layout.cascadeY + layout.cardH + layout.marginY)
+})
+
+test('a point on the page maps onto the board inside the canvas, scaled to the board', () => {
+  const layout = freeCellLayout(800)
+
+  // The canvas draws 400 page px wide, from (101, 51) inside its border: half the board's width.
+  const content = { left: 101, top: 51, width: 400 }
+
+  expect(boardPoint(101, 51, content, layout)).toEqual({ x: 0, y: 0 })
+  expect(boardPoint(301, 151, content, layout)).toEqual({ x: 400, y: 200 })
 })

@@ -1,9 +1,12 @@
 // Where FreeCell's places and cards sit at whatever width the page gives us (no DOM). The view both draws
 // from this and hit-tests against it, so a tap always lands on the card the player aimed at.
-import { CASCADE_COUNT, FOUNDATION_COUNT, FREE_CELL_COUNT, type GameState, type Place } from './freecell-logic'
+import { CASCADE_COUNT, FOUNDATION_COUNT, places, type GameState, type Place } from './freecell-logic'
 import { pointInRect, type Rect } from './solitaire-rules'
 
 export type { Rect } from './solitaire-rules'
+
+// A point on the board, in board pixels.
+export type Point = { x: number; y: number }
 
 // Sizes at scale 1, in canvas pixels.
 export const CARD_W = 86
@@ -101,25 +104,41 @@ export function cascadeCardRects(cascade: number, state: GameState, layout: Layo
   return cards.map((_, index) => ({ ...first, y: first.y + index * step }))
 }
 
+// How tall the board is drawn: down to the foot of its longest cascade, or to the foot of a lone card while
+// every cascade is shorter, and a margin below that.
+export function boardHeight(state: GameState, layout: Layout): number {
+  const feet = state.cascades.map((_, cascade) => cascadeCardRects(cascade, state, layout).at(-1))
+  const lowest = Math.max(layout.cascadeY + layout.cardH, ...feet.map((foot) => (foot ? foot.y + foot.h : 0)))
+
+  return lowest + layout.marginY
+}
+
+// A point on the page as a point on the board. `content` is where the canvas draws on the page, inside its
+// border: the board keeps its shape there, so one factor serves both axes.
+export function boardPoint(
+  clientX: number,
+  clientY: number,
+  content: { left: number; top: number; width: number },
+  layout: Layout,
+): Point {
+  const factor = layout.width / content.width
+
+  return { x: (clientX - content.left) * factor, y: (clientY - content.top) * factor }
+}
+
 // What a point is over: a place and, in a cascade with cards, the index of the card hit. cardIndex is null
 // for a free cell, a foundation or an empty cascade.
 export type Hit = { place: Place; cardIndex: number | null }
 
-export function hitTest(point: { x: number; y: number }, state: GameState, layout: Layout): Hit | null {
-  const topRow: Place[] = [
-    ...Array.from({ length: FREE_CELL_COUNT }, (_, index): Place => ({ kind: 'free-cell', index })),
-    ...Array.from({ length: FOUNDATION_COUNT }, (_, index): Place => ({ kind: 'foundation', index })),
-  ]
-
-  for (const place of topRow) {
+export function hitTest(point: Point, state: GameState, layout: Layout): Hit | null {
+  for (const place of [...places('free-cell'), ...places('foundation')]) {
     if (pointInRect(point.x, point.y, placeRect(place, layout))) {
       return { place, cardIndex: null }
     }
   }
 
-  for (let index = 0; index < CASCADE_COUNT; index += 1) {
-    const place: Place = { kind: 'cascade', index }
-    const rects = cascadeCardRects(index, state, layout)
+  for (const place of places('cascade')) {
+    const rects = cascadeCardRects(place.index, state, layout)
 
     if (rects.length === 0) {
       if (pointInRect(point.x, point.y, placeRect(place, layout))) {
