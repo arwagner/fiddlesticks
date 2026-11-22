@@ -213,6 +213,11 @@ A press on a card that doesn't drag it. The game picks where the card goes: a fo
 that isn't empty, then an empty cascade, then a free cell.
 _Avoid_: Click (on a phone it's a finger), double-click
 
+**Drag**:
+A press on a card that lifts it, with the cards below it in a cascade, follows the pointer and drops them on
+the place where it is released. A drop the rules refuse puts them back where they came from.
+_Avoid_: Run, swipe
+
 **Auto-play**:
 Moving safe cards up to the foundations without the player asking.
 _Avoid_: Auto-move, autocomplete

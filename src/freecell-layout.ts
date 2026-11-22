@@ -101,6 +101,15 @@ export function cascadeCardRects(cascade: number, state: GameState, layout: Layo
   return cards.map((_, index) => ({ ...first, y: first.y + index * step }))
 }
 
+// How tall the board is drawn: down to the foot of its longest cascade, or to the foot of a lone card while
+// every cascade is shorter, and a margin below that.
+export function boardHeight(state: GameState, layout: Layout): number {
+  const feet = state.cascades.map((_, cascade) => cascadeCardRects(cascade, state, layout).at(-1))
+  const lowest = Math.max(layout.cascadeY + layout.cardH, ...feet.map((foot) => (foot ? foot.y + foot.h : 0)))
+
+  return lowest + layout.marginY
+}
+
 // What a point is over: a place and, in a cascade with cards, the index of the card hit. cardIndex is null
 // for a free cell, a foundation or an empty cascade.
 export type Hit = { place: Place; cardIndex: number | null }

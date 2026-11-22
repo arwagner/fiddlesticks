@@ -184,9 +184,14 @@ export function move(state: GameState, from: Place, to: Place, count: number): G
   return { cascades, freeCells, foundations, past: [...state.past, arrangementOf(state)] }
 }
 
+// How many cards are on the foundations, from 0 to 52.
+export function cardsOnFoundations(state: Arrangement): number {
+  return state.foundations.reduce((total, foundation) => total + foundation.length, 0)
+}
+
 // All 52 cards on the foundations.
 export function isSolved(state: GameState): boolean {
-  return state.foundations.reduce((total, foundation) => total + foundation.length, 0) === 52
+  return cardsOnFoundations(state) === 52
 }
 
 // Goes back one move. With nothing in `past` there is nothing to go back to, so the state comes back as it is.

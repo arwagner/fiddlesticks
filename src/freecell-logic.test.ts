@@ -7,6 +7,7 @@ import {
   move,
   capacity,
   isSolved,
+  cardsOnFoundations,
   undo,
   autoPlay,
   isSafe,
@@ -234,6 +235,18 @@ test('isSolved is true only with all 52 cards on the foundations', () => {
   expect(isSolved(solved)).toBe(true)
   expect(isSolved(oneShort)).toBe(false)
   expect(isSolved(newGame(seeded(6)))).toBe(false)
+})
+
+test('cardsOnFoundations counts the cards on every foundation', () => {
+  const state = table([[card(9, 'spades')]], undefined, [
+    [card(1, 'hearts'), card(2, 'hearts')],
+    [],
+    [card(1, 'clubs')],
+    [],
+  ])
+
+  expect(cardsOnFoundations(state)).toBe(3)
+  expect(cardsOnFoundations(newGame(seeded(6)))).toBe(0)
 })
 
 test('a move pushes the state before it onto past, and undo goes back one move', () => {
