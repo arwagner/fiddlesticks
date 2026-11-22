@@ -29,7 +29,8 @@ export const INDEX_BASELINE = 0.36
 // index, plus a little air — otherwise the card on top clips the rank you need to read.
 export const FACEUP_SHIFT = Math.round(CARD_H * INDEX_BASELINE) + 3
 
-export function cardColor(card: Card): 'red' | 'black' {
+// Takes anything with a suit, so FreeCell's cards (which have no faceUp) share it.
+export function cardColor(card: { suit: Suit }): 'red' | 'black' {
   return card.suit === 'hearts' || card.suit === 'diamonds' ? 'red' : 'black'
 }
 
