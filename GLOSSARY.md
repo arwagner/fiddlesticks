@@ -191,8 +191,8 @@ Any cascade, free cell or foundation, where a card can be taken from or put down
 _Avoid_: Pile, spot, location
 
 **Arrangement**:
-Where every card is at one moment: the cascades, free cells and foundations, without the history. Undo
-steps back to the arrangement before.
+Where every card is at one moment: the cascades, free cells and foundations, without the moves that led
+there. Undo goes back to the arrangement before the last move.
 _Avoid_: Layout (that is the board's geometry), position
 
 **Sequence**:
