@@ -97,6 +97,13 @@ function cardsToTake(state: GameState, from: Place, count: number): Card[] | nul
   return card ? [card] : null
 }
 
+// Whether `card` may go onto `foundation`: an Ace onto an empty one, otherwise the next rank of the same suit.
+function goesOnFoundation(foundation: Card[], card: Card): boolean {
+  const top = foundation.at(-1)
+
+  return top ? card.suit === top.suit && card.rank === top.rank + 1 : card.rank === 1
+}
+
 // Whether `cards` may be put down on `to`, leaving capacity aside.
 function canPutDown(state: GameState, cards: Card[], to: Place): boolean {
   const [first] = cards
@@ -117,13 +124,7 @@ function canPutDown(state: GameState, cards: Card[], to: Place): boolean {
 
   const foundation = state.foundations[to.index]
 
-  if (!foundation || cards.length !== 1) {
-    return false
-  }
-
-  const top = foundation.at(-1)
-
-  return top ? first.suit === top.suit && first.rank === top.rank + 1 : first.rank === 1
+  return !!foundation && cards.length === 1 && goesOnFoundation(foundation, first)
 }
 
 function arrangementOf(state: GameState): Arrangement {
@@ -184,11 +185,7 @@ export function undo(state: GameState): GameState {
 
 // The foundation `card` can go onto now, or null if none will take it.
 function foundationFor(state: Arrangement, card: Card): Place | null {
-  const index = state.foundations.findIndex((foundation) => {
-    const top = foundation.at(-1)
-
-    return top ? card.suit === top.suit && card.rank === top.rank + 1 : card.rank === 1
-  })
+  const index = state.foundations.findIndex((foundation) => goesOnFoundation(foundation, card))
 
   return index === -1 ? null : { kind: 'foundation', index }
 }
