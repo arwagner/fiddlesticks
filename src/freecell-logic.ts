@@ -13,7 +13,7 @@ export type Place = { kind: 'cascade' | 'free-cell' | 'foundation'; index: numbe
 
 // Where every card is at one moment, without the history.
 export type Arrangement = {
-  cascades: Card[][] // 8, each listed from the head down to its foot
+  cascades: Card[][] // 8, each listed from the first card dealt down to its foot
   freeCells: (Card | null)[] // 4
   foundations: Card[][] // 4, each built up from Ace
 }

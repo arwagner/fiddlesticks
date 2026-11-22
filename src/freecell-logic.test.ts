@@ -33,7 +33,7 @@ test('the eight cascades hold 7, 7, 7, 7, 6, 6, 6, 6 cards', () => {
 
 test('the deck is dealt left to right in turn across the cascades', () => {
   // With a random that never swaps, the deck stays in suit order, Ace to King: the first eight cards
-  // become the heads of the eight cascades.
+  // become the first card of each of the eight cascades.
   const { cascades } = newGame(() => 0.999999)
   const inOrder = [...Array(52).keys()].map((index) => cascades[index % 8][Math.floor(index / 8)])
 
