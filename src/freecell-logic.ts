@@ -26,6 +26,8 @@ export type GameState = Arrangement & {
 export const CASCADE_COUNT = 8
 export const FREE_CELL_COUNT = 4
 export const FOUNDATION_COUNT = 4
+// Every card in the deck.
+export const CARD_COUNT = 52
 
 // The 52 cards in suit order, Ace to King within each suit.
 export function fullDeck(): Card[] {
@@ -191,7 +193,7 @@ export function cardsOnFoundations(state: Arrangement): number {
 
 // All 52 cards on the foundations.
 export function isSolved(state: GameState): boolean {
-  return cardsOnFoundations(state) === 52
+  return cardsOnFoundations(state) === CARD_COUNT
 }
 
 // Goes back one move. With nothing in `past` there is nothing to go back to, so the state comes back as it is.

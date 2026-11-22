@@ -7,6 +7,7 @@ import {
   undo,
   isSolved,
   cardsOnFoundations,
+  CARD_COUNT,
   CASCADE_COUNT,
   FOUNDATION_COUNT,
   FREE_CELL_COUNT,
@@ -189,8 +190,8 @@ export function setupFreeCell(container: HTMLElement, createGame: () => GameStat
     const solved = isSolved(state)
 
     status.textContent = solved
-      ? 'Solved! All 52 cards are on the foundations.'
-      : `${cardsOnFoundations(state)} of 52 cards on the foundations`
+      ? `Solved! All ${CARD_COUNT} cards are on the foundations.`
+      : `${cardsOnFoundations(state)} of ${CARD_COUNT} cards on the foundations`
     status.classList.toggle('freecell-status-solved', solved)
     undoButton.disabled = state.past.length === 0
     draw()
