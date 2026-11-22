@@ -1,4 +1,5 @@
 import { test, expect } from 'vitest'
+import { seeded } from './seeded.test-helper'
 import {
   N,
   E,
@@ -87,19 +88,6 @@ test('no loose ends is not enough: a loop plus a separate island is not solved',
   expect(looseEnds(loopAndIsland)).toBe(0)
   expect(isSolved(loopAndIsland, CENTRE)).toBe(false)
 })
-
-// A small seeded generator, so random deals repeat exactly.
-function seeded(seed: number): () => number {
-  let a = seed >>> 0
-
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0
-    let t = a
-    t = Math.imul(t ^ (t >>> 15), t | 1)
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
-  }
-}
 
 function withTurned(board: number[][], r: number, c: number): number[][] {
   const copy = board.map((row) => [...row])
