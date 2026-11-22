@@ -135,6 +135,39 @@ Either one pair with more bridges than the solution, pointed out and left as it 
 settle from the bridges already laid, set to its level.
 _Avoid_: Tip, clue
 
+## Cards
+
+Terms shared by the card games (Solitaire, FreeCell). Each game's own piles get their own section.
+
+**Suit**:
+Hearts, diamonds, clubs or spades. Hearts and diamonds are red, clubs and spades black.
+_Avoid_: Colour (that is red or black), kind
+
+**Rank**:
+A card's value from Ace (1) to King (13), shown as A, 2–10, J, Q, K.
+_Avoid_: Value, number
+
+**Pip**:
+The suit's symbol (♥ ♦ ♣ ♠) drawn on a card.
+_Avoid_: Icon, glyph
+
+**Index**:
+A card's rank and pip printed together in a corner ("10♥"): large at the top left, smaller at the bottom
+right. The top one stays showing when another card fanned over it covers the rest.
+_Avoid_: Label, corner
+
+**Face**:
+The side of a face-up card, showing its index.
+_Avoid_: Front
+
+**Back**:
+The striped side of a face-down card.
+_Avoid_: Reverse, cover
+
+**Slot**:
+A place a card can go, drawn as a dashed outline when no card is on it.
+_Avoid_: Placeholder, space
+
 ## FreeCell
 
 **Card**:
@@ -185,7 +218,8 @@ Moving safe cards up to the foundations without the player asking.
 _Avoid_: Auto-move, autocomplete
 
 **Safe card**:
-A card that no card left in play could still need to go onto it.
+A card that no card left in play could still need to go onto it: it can go onto its foundation, and both
+cards of the other colour one rank lower are already on foundations. Aces and Twos are always safe.
 
 **Solved**:
 All 52 cards on the foundations.
@@ -199,8 +233,3 @@ _Avoid_: Arrangement (that is where the cards are), geometry
 How far each card in a cascade sits below the one before it. A long cascade closes up its fan step to stay
 within the board's maximum height, but never below a card's index.
 _Avoid_: Offset, shift, spacing
-
-**Index**:
-The strip at the top of a card that shows its rank and suit, which stays showing when another card covers
-the rest.
-_Avoid_: Corner, label
