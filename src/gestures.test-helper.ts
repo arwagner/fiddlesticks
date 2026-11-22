@@ -10,17 +10,17 @@
 export type GestureOptions = { button?: 0 | 2; ctrlKey?: boolean }
 
 // A point on the page over an element, for a board drawn on one canvas, where only the point says what is hit.
-export type Point = { target: Element; clientX: number; clientY: number }
+export type PagePoint = { target: Element; clientX: number; clientY: number }
 
 // An element to aim at, looked up when the gesture reaches it: a redraw may replace the one that was there.
 export type Spot = () => Element
 
 // A spot or a point to aim at, looked up the same way.
-export type Aim = Spot | (() => Point)
+export type Aim = Spot | (() => PagePoint)
 
 let over: Element | null = null
 
-function aim(spot: Aim): Point {
+function aim(spot: Aim): PagePoint {
   const found = spot()
   const aimed = found instanceof Element ? { target: found, clientX: 0, clientY: 0 } : found
   over = aimed.target
@@ -28,7 +28,7 @@ function aim(spot: Aim): Point {
   return aimed
 }
 
-function send(type: string, at: Point, { button = 0, ctrlKey = false }: GestureOptions, down: boolean): void {
+function send(type: string, at: PagePoint, { button = 0, ctrlKey = false }: GestureOptions, down: boolean): void {
   const buttons = down ? (button === 2 ? 2 : 1) : 0
   const { clientX, clientY } = at
   at.target.dispatchEvent(
@@ -38,7 +38,7 @@ function send(type: string, at: Point, { button = 0, ctrlKey = false }: GestureO
 
 // What the browser sends after the button comes up: contextmenu for the right button or a Mac Ctrl-click,
 // otherwise click. Returns the event, to check defaultPrevented.
-function followUp(at: Point, { button = 0, ctrlKey = false }: GestureOptions): MouseEvent {
+function followUp(at: PagePoint, { button = 0, ctrlKey = false }: GestureOptions): MouseEvent {
   const event = new MouseEvent(button === 2 || ctrlKey ? 'contextmenu' : 'click', {
     bubbles: true,
     cancelable: true,

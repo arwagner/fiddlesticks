@@ -3,7 +3,7 @@ import { test, expect, beforeEach } from 'vitest'
 import { setupFreeCell } from './freecell'
 import { CASCADE_COUNT, fullDeck, newGame, places, type Card, type GameState, type Place } from './freecell-logic'
 import { freeCellLayout, placeRect, cascadeCardRects, type Rect } from './freecell-layout'
-import { drag, press, type Point } from './gestures.test-helper'
+import { drag, press, type PagePoint } from './gestures.test-helper'
 import { seeded } from './seeded.test-helper'
 import { rankLabels, suitLabels } from './cards'
 
@@ -62,17 +62,17 @@ function whereIsEvery(): Record<string, Place | null> {
 
 // Where a card is drawn now, found from the first place whose column and row its index was written in.
 function whereIs(text: string): Place | null {
-  const index = written.find((each) => each.text === text)
+  const drawn = written.find((each) => each.text === text)
 
-  if (!index) {
+  if (!drawn) {
     return null
   }
 
   return (
     allPlaces.find((place) => {
       const rect = placeRect(place, layout)
-      const inColumn = index.x >= rect.x && index.x < rect.x + rect.w
-      const inRow = place.kind === 'cascade' ? index.y >= rect.y : index.y < rect.y + rect.h
+      const inColumn = drawn.x >= rect.x && drawn.x < rect.x + rect.w
+      const inRow = place.kind === 'cascade' ? drawn.y >= rect.y : drawn.y < rect.y + rect.h
 
       return inColumn && inRow
     }) ?? null
@@ -116,7 +116,7 @@ function mount(createGame: () => GameState) {
   const canvas = element.querySelector<HTMLCanvasElement>('#freecell-canvas')!
   const at =
     (rect: Rect, down = rect.h / 2) =>
-    (): Point => ({ target: canvas, clientX: rect.x + rect.w / 2, clientY: rect.y + down })
+    (): PagePoint => ({ target: canvas, clientX: rect.x + rect.w / 2, clientY: rect.y + down })
 
   return {
     element,
@@ -280,7 +280,7 @@ test('New game deals again', () => {
 })
 
 // One pointer's event, sent on its own: which pointer sends it is the point of the test.
-function pointer(type: string, aim: () => Point, pointerId: number): void {
+function pointer(type: string, aim: () => PagePoint, pointerId: number): void {
   const { target, clientX, clientY } = aim()
   const event = new MouseEvent(type, { bubbles: true, cancelable: true, button: 0, clientX, clientY })
   Object.defineProperty(event, 'pointerId', { value: pointerId })
