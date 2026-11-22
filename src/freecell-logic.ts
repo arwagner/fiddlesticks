@@ -1,4 +1,5 @@
 // Pure FreeCell rules: no canvas or DOM, so a test can call every entry point.
+import { shuffled } from './shuffle'
 import { suits, type Suit } from './solitaire-rules'
 
 // Colour works the same as in Klondike; re-exported so FreeCell's code reads it from one module.
@@ -29,19 +30,6 @@ export const FOUNDATION_COUNT = 4
 // The 52 cards in suit order, Ace to King within each suit.
 export function fullDeck(): Card[] {
   return suits.flatMap((suit) => Array.from({ length: 13 }, (_, index) => ({ suit, rank: index + 1 })))
-}
-
-function shuffled<T>(values: T[], random: () => number): T[] {
-  const next = [...values]
-
-  for (let index = next.length - 1; index > 0; index -= 1) {
-    const swap = Math.floor(random() * (index + 1))
-    const current = next[index]
-    next[index] = next[swap]
-    next[swap] = current
-  }
-
-  return next
 }
 
 // A shuffled deck dealt left to right in turn across the eight cascades, so the first four get 7 cards and
