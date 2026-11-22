@@ -1,6 +1,6 @@
 // Pure FreeCell rules: no canvas or DOM, so a test can call every entry point.
 import { shuffled } from './shuffle'
-import { cardColor, suits, type Suit } from './solitaire-rules'
+import { cardColor, suits, type Suit } from './cards'
 
 // Colour works the same as in Klondike; re-exported so FreeCell's code reads it from one module.
 export { cardColor }
