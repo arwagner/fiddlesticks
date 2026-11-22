@@ -1,4 +1,5 @@
 // Pure FreeCell rules: no canvas or DOM, so a test can call every entry point.
+import { shuffled } from './shuffle'
 import { cardColor, suits, type Suit } from './solitaire-rules'
 
 // Colour works the same as in Klondike; re-exported so FreeCell's code reads it from one module.
@@ -10,16 +11,16 @@ export type Card = { suit: Suit; rank: number }
 // Any cascade, free cell or foundation: somewhere a card can be taken from or put down.
 export type Place = { kind: 'cascade' | 'free-cell' | 'foundation'; index: number }
 
-// Where every card is, without the history.
-export type Layout = {
-  cascades: Card[][] // 8, each listed from the head down to its foot
+// Where every card is at one moment, without the history.
+export type Arrangement = {
+  cascades: Card[][] // 8, each listed from the first card dealt down to its foot
   freeCells: (Card | null)[] // 4
   foundations: Card[][] // 4, each built up from Ace
 }
 
-export type GameState = Layout & {
-  // Each earlier layout, newest last, so undo just pops one.
-  past: Layout[]
+export type GameState = Arrangement & {
+  // Each earlier arrangement, newest last, so undo just pops one.
+  past: Arrangement[]
 }
 
 export const CASCADE_COUNT = 8
@@ -29,19 +30,6 @@ export const FOUNDATION_COUNT = 4
 // The 52 cards in suit order, Ace to King within each suit.
 export function fullDeck(): Card[] {
   return suits.flatMap((suit) => Array.from({ length: 13 }, (_, index) => ({ suit, rank: index + 1 })))
-}
-
-function shuffled<T>(values: T[], random: () => number): T[] {
-  const next = [...values]
-
-  for (let index = next.length - 1; index > 0; index -= 1) {
-    const swap = Math.floor(random() * (index + 1))
-    const current = next[index]
-    next[index] = next[swap]
-    next[swap] = current
-  }
-
-  return next
 }
 
 // A shuffled deck dealt left to right in turn across the eight cascades, so the first four get 7 cards and
@@ -61,7 +49,7 @@ export function newGame(random: () => number = Math.random): GameState {
   }
 }
 
-const isEmptyCascade = (state: Layout, place: Place) =>
+const isEmptyCascade = (state: Arrangement, place: Place) =>
   place.kind === 'cascade' && state.cascades[place.index]?.length === 0
 
 // The most cards one move can carry to `to`: (empty free cells + 1) × 2^(empty cascades), counting one fewer
@@ -142,7 +130,7 @@ function canPutDown(state: GameState, cards: Card[], to: Place): boolean {
   return top ? first.suit === top.suit && first.rank === top.rank + 1 : first.rank === 1
 }
 
-function layoutOf(state: GameState): Layout {
+function arrangementOf(state: GameState): Arrangement {
   return { cascades: state.cascades, freeCells: state.freeCells, foundations: state.foundations }
 }
 
@@ -179,7 +167,7 @@ export function move(state: GameState, from: Place, to: Place, count: number): G
     foundations[to.index].push(cards[0])
   }
 
-  return { cascades, freeCells, foundations, past: [...state.past, layoutOf(state)] }
+  return { cascades, freeCells, foundations, past: [...state.past, arrangementOf(state)] }
 }
 
 // All 52 cards on the foundations.

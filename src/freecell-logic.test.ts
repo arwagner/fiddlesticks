@@ -1,4 +1,5 @@
 import { test, expect } from 'vitest'
+import { seeded } from './seeded.test-helper'
 import {
   newGame,
   fullDeck,
@@ -11,19 +12,6 @@ import {
   type GameState,
   type Place,
 } from './freecell-logic'
-
-// A small seeded generator, so random deals repeat exactly.
-function seeded(seed: number): () => number {
-  let a = seed >>> 0
-
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0
-    let t = a
-    t = Math.imul(t ^ (t >>> 15), t | 1)
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
-  }
-}
 
 const key = (card: Card) => `${card.suit}-${card.rank}`
 
@@ -44,7 +32,7 @@ test('the eight cascades hold 7, 7, 7, 7, 6, 6, 6, 6 cards', () => {
 
 test('the deck is dealt left to right in turn across the cascades', () => {
   // With a random that never swaps, the deck stays in suit order, Ace to King: the first eight cards
-  // become the heads of the eight cascades.
+  // become the first card of each of the eight cascades.
   const { cascades } = newGame(() => 0.999999)
   const inOrder = [...Array(52).keys()].map((index) => cascades[index % 8][Math.floor(index / 8)])
 
@@ -74,7 +62,7 @@ test('cards are coloured by suit, as in Klondike', () => {
   expect(cardColor(club)).toBe('black')
 })
 
-// Short names for cards and places, so a layout reads like the table.
+// Short names for cards and places, so an arrangement reads like the table.
 const card = (rank: number, suit: Card['suit']): Card => ({ suit, rank })
 const cascade = (index: number): Place => ({ kind: 'cascade', index })
 const freeCell = (index: number): Place => ({ kind: 'free-cell', index })
