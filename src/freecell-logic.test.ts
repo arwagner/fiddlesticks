@@ -187,12 +187,13 @@ test('a free cell or a foundation has a capacity of one card', () => {
   expect(capacity(state, foundation(0))).toBe(1)
 })
 
-test('a block at the foot of a cascade that is not a sequence is refused', () => {
+test('cards at the foot of a cascade that are not a sequence are refused', () => {
   const sameColour = table([[card(10, 'spades')], [card(9, 'hearts'), card(8, 'diamonds')]])
   const wrongRank = table([[card(10, 'spades')], [card(9, 'hearts'), card(7, 'clubs')]])
 
-  expect(move(sameColour, cascade(1), cascade(2), 2)).toBeNull()
-  expect(move(wrongRank, cascade(1), cascade(2), 2)).toBeNull()
+  // The 9 of hearts on top of each pair could go onto the 10 of spades: only the card below it breaks the sequence.
+  expect(move(sameColour, cascade(1), cascade(0), 2)).toBeNull()
+  expect(move(wrongRank, cascade(1), cascade(0), 2)).toBeNull()
 })
 
 test('a move of no cards, more cards than the cascade holds, or onto its own place is refused', () => {
