@@ -16,6 +16,7 @@ import {
   type Card,
   type GameState,
   type Place,
+  places,
 } from './freecell-logic'
 
 const key = (card: Card) => `${card.suit}-${card.rank}`
@@ -457,4 +458,10 @@ test('a sequence too long for the capacity into the only empty cascade gives nul
 
   expect(tapped(state, cascade(0), 1)).toBeNull()
   expect(tapped(state, cascade(0), 2)).toEqual({ from: cascade(0), to: cascade(1), count: 1 })
+})
+
+test('places lists every place of a kind, in order', () => {
+  expect(places('cascade')).toHaveLength(8)
+  expect(places('free-cell')).toEqual([0, 1, 2, 3].map((index) => ({ kind: 'free-cell', index })))
+  expect(places('foundation').map((place) => place.index)).toEqual([0, 1, 2, 3])
 })

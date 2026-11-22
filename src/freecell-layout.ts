@@ -1,6 +1,6 @@
 // Where FreeCell's places and cards sit at whatever width the page gives us (no DOM). The view both draws
 // from this and hit-tests against it, so a tap always lands on the card the player aimed at.
-import { CASCADE_COUNT, FOUNDATION_COUNT, FREE_CELL_COUNT, type GameState, type Place } from './freecell-logic'
+import { CASCADE_COUNT, FOUNDATION_COUNT, places, type GameState, type Place } from './freecell-logic'
 import { pointInRect, type Rect } from './solitaire-rules'
 
 export type { Rect } from './solitaire-rules'
@@ -131,20 +131,14 @@ export function boardPoint(
 export type Hit = { place: Place; cardIndex: number | null }
 
 export function hitTest(point: Point, state: GameState, layout: Layout): Hit | null {
-  const topRow: Place[] = [
-    ...Array.from({ length: FREE_CELL_COUNT }, (_, index): Place => ({ kind: 'free-cell', index })),
-    ...Array.from({ length: FOUNDATION_COUNT }, (_, index): Place => ({ kind: 'foundation', index })),
-  ]
-
-  for (const place of topRow) {
+  for (const place of [...places('free-cell'), ...places('foundation')]) {
     if (pointInRect(point.x, point.y, placeRect(place, layout))) {
       return { place, cardIndex: null }
     }
   }
 
-  for (let index = 0; index < CASCADE_COUNT; index += 1) {
-    const place: Place = { kind: 'cascade', index }
-    const rects = cascadeCardRects(index, state, layout)
+  for (const place of places('cascade')) {
+    const rects = cascadeCardRects(place.index, state, layout)
 
     if (rects.length === 0) {
       if (pointInRect(point.x, point.y, placeRect(place, layout))) {

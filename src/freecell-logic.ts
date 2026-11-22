@@ -29,6 +29,18 @@ export const FOUNDATION_COUNT = 4
 // Every card in the deck.
 export const CARD_COUNT = 52
 
+// How many places of each kind the board has.
+const PLACE_COUNTS: Record<Place['kind'], number> = {
+  cascade: CASCADE_COUNT,
+  'free-cell': FREE_CELL_COUNT,
+  foundation: FOUNDATION_COUNT,
+}
+
+// Every place of one kind, in order.
+export function places(kind: Place['kind']): Place[] {
+  return Array.from({ length: PLACE_COUNTS[kind] }, (_, index) => ({ kind, index }))
+}
+
 // The 52 cards in suit order, Ace to King within each suit.
 export function fullDeck(): Card[] {
   return suits.flatMap((suit) => Array.from({ length: 13 }, (_, index) => ({ suit, rank: index + 1 })))
@@ -234,10 +246,7 @@ export function isSafe(state: Arrangement, card: Card): boolean {
 }
 
 // Every place auto-play may take a card from: the foot of each cascade, then each free cell.
-const autoPlayPlaces: Place[] = [
-  ...Array.from({ length: CASCADE_COUNT }, (_, index): Place => ({ kind: 'cascade', index })),
-  ...Array.from({ length: FREE_CELL_COUNT }, (_, index): Place => ({ kind: 'free-cell', index })),
-]
+const autoPlayPlaces: Place[] = [...places('cascade'), ...places('free-cell')]
 
 // One safe card's move up to its foundation, or null if no card is safe.
 function nextSafeMove(state: Arrangement): { from: Place; to: Place } | null {
@@ -289,16 +298,14 @@ export function tapMove(state: GameState, from: Place, index: number): Move | nu
     return null
   }
 
-  const places = (kind: Place['kind'], length: number): Place[] =>
-    Array.from({ length }, (_, placeIndex) => ({ kind, index: placeIndex }))
-  const cascades = places('cascade', CASCADE_COUNT)
+  const cascades = places('cascade')
   // Moving a whole cascade into an empty one, or a free cell's card into another free cell, changes nothing.
   const takesWholeCascade = from.kind === 'cascade' && count === size
   const candidates = [
-    ...(count === 1 ? places('foundation', FOUNDATION_COUNT) : []),
+    ...(count === 1 ? places('foundation') : []),
     ...cascades.filter((to) => !isEmptyCascade(state, to)),
     ...(takesWholeCascade ? [] : cascades.filter((to) => isEmptyCascade(state, to))),
-    ...(count === 1 && from.kind !== 'free-cell' ? places('free-cell', FREE_CELL_COUNT) : []),
+    ...(count === 1 && from.kind !== 'free-cell' ? places('free-cell') : []),
   ]
   const to = candidates.find((place) => move(state, from, place, count) !== null)
 

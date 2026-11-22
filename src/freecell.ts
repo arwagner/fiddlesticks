@@ -8,9 +8,7 @@ import {
   isSolved,
   cardsOnFoundations,
   CARD_COUNT,
-  CASCADE_COUNT,
-  FOUNDATION_COUNT,
-  FREE_CELL_COUNT,
+  places,
   type Card,
   type GameState,
   type Place,
@@ -42,9 +40,6 @@ type Lifted = {
   at: Point
   dragging: boolean
 }
-
-const places = (kind: Place['kind'], count: number): Place[] =>
-  Array.from({ length: count }, (_, index) => ({ kind, index }))
 
 export function setupFreeCell(container: HTMLElement, createGame: () => GameState = newGame): void {
   container.innerHTML = `
@@ -124,7 +119,7 @@ export function setupFreeCell(container: HTMLElement, createGame: () => GameStat
   }
 
   function drawTopRow(): void {
-    places('free-cell', FREE_CELL_COUNT).forEach((place) => {
+    places('free-cell').forEach((place) => {
       const card = state.freeCells[place.index]
       const rect = placeRect(place, layout)
 
@@ -135,7 +130,7 @@ export function setupFreeCell(container: HTMLElement, createGame: () => GameStat
       }
     })
 
-    places('foundation', FOUNDATION_COUNT).forEach((place) => {
+    places('foundation').forEach((place) => {
       const card = state.foundations[place.index].at(-1)
       const rect = placeRect(place, layout)
 
@@ -148,7 +143,7 @@ export function setupFreeCell(container: HTMLElement, createGame: () => GameStat
   }
 
   function drawCascades(): void {
-    places('cascade', CASCADE_COUNT).forEach((place) => {
+    places('cascade').forEach((place) => {
       const cards = state.cascades[place.index]
 
       if (cards.length === 0) {

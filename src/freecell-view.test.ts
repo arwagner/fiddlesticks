@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { test, expect, beforeEach } from 'vitest'
 import { setupFreeCell } from './freecell'
-import { fullDeck, newGame, type Card, type GameState, type Place } from './freecell-logic'
+import { CASCADE_COUNT, fullDeck, newGame, places, type Card, type GameState, type Place } from './freecell-logic'
 import { freeCellLayout, placeRect, cascadeCardRects, type Rect } from './freecell-layout'
 import { drag, press, type Point } from './gestures.test-helper'
 import { seeded } from './seeded.test-helper'
@@ -47,9 +47,7 @@ function stubLayoutAndCanvas(): void {
   } as unknown as typeof ResizeObserver
 }
 
-const allPlaces: Place[] = (['cascade', 'free-cell', 'foundation'] as const).flatMap((kind) =>
-  Array.from({ length: kind === 'cascade' ? 8 : 4 }, (_, index) => ({ kind, index })),
-)
+const allPlaces: Place[] = [...places('cascade'), ...places('free-cell'), ...places('foundation')]
 
 // Where every card on the board is drawn now, by its index.
 function whereIsEvery(): Record<string, Place | null> {
@@ -95,7 +93,7 @@ function table(
   foundations: Card[][] = [[], [], [], []],
 ): GameState {
   return {
-    cascades: [...cascades, ...Array.from({ length: 8 - cascades.length }, () => [])],
+    cascades: [...cascades, ...Array.from({ length: CASCADE_COUNT - cascades.length }, () => [])],
     freeCells,
     foundations,
     past: [],
