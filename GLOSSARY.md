@@ -141,15 +141,16 @@ _Avoid_: Tip, clue
 One of the 52. In FreeCell every card is always face up.
 
 **Cascade**:
-One of the eight columns of cards dealt at the start. Only the card at its foot can be played onto.
+One of the eight places the cards are dealt into at the start, each card overlapping the one before. Only
+the card at its foot can be played onto.
 _Avoid_: Column, tableau, pile
 
 **Free cell**:
-One of the four slots that holds a single card.
+A place that holds a single card, any card. There are four.
 _Avoid_: Reserve, cell (that is Nonogram's), slot
 
 **Foundation**:
-One of the four piles built up by suit from Ace to King.
+A place where one suit is built up from Ace to King. There are four.
 _Avoid_: Home, goal
 
 **Place**:
@@ -165,10 +166,19 @@ _Avoid_: Layout (that is the board's geometry), position
 Cards at the foot of a cascade that run down in rank and alternate colour.
 _Avoid_: Run (that is Nonogram's), stack
 
+**Move**:
+Taking one card, or a sequence, from one place and putting it on another, as one step undo can take back.
+_Avoid_: Play, turn
+
 **Capacity**:
 The most cards one move can carry: (empty free cells + 1) × 2^(empty cascades), counting one fewer empty
 cascade when the move goes into one.
 _Avoid_: Supermove, limit
+
+**Tap**:
+A press on a card that doesn't drag it. The game picks where the card goes: a foundation, then a cascade
+that isn't empty, then an empty cascade, then a free cell.
+_Avoid_: Click (on a phone it's a finger), double-click
 
 **Auto-play**:
 Moving safe cards up to the foundations without the player asking.
