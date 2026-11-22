@@ -4,10 +4,6 @@ import {
   type Layout,
   type Source,
   suits,
-  rankLabels,
-  suitLabels,
-  INDEX_BASELINE,
-  cardColor,
   canPlaceOnFoundation,
   canPlaceOnTableau,
   validateDraggedRun,
@@ -26,14 +22,12 @@ import {
   sendWasteToFoundationAuto,
   returnToSource,
 } from './solitaire-rules'
+import { drawCardBack, drawCardFace, drawEmptySlot } from './card-draw'
 
 // onPointerDown calls preventDefault, which can suppress the compatibility dblclick event, so a
 // double-click is recognised from the pointer stream: two presses close together in time and place.
 const DOUBLE_CLICK_MS = 350
 const DOUBLE_CLICK_SLOP = 10
-
-// Trebuchet first for the rank digits; the symbol fonts back it up wherever it lacks a suit pip.
-const CARD_FONT = '"Trebuchet MS", "Apple Symbols", "Segoe UI Symbol", sans-serif'
 
 type DragState = {
   cards: Card[]
@@ -165,71 +159,17 @@ export function setupSolitaire(container: HTMLElement): void {
   }
 
   function drawSlot(x: number, y: number, label = ''): void {
-    ctx.save()
-    ctx.strokeStyle = 'rgba(196, 246, 232, 0.4)'
-    ctx.lineWidth = 2
-    ctx.setLineDash([7, 6])
-    ctx.strokeRect(x, y, layout.cardW, layout.cardH)
-    ctx.setLineDash([])
-
-    if (label) {
-      ctx.fillStyle = 'rgba(196, 246, 232, 0.7)'
-      ctx.font = `600 ${Math.max(18, 26 * layout.scale)}px ${CARD_FONT}`
-      ctx.fillText(label, x + layout.cardW * 0.1, y + layout.cardH * 0.35)
-    }
-
-    ctx.restore()
+    drawEmptySlot(ctx, { x, y, w: layout.cardW, h: layout.cardH }, label)
   }
 
   function drawCard(card: Card, x: number, y: number): void {
-    const radius = 10 * layout.scale
+    const rect = { x, y, w: layout.cardW, h: layout.cardH }
 
-    ctx.save()
-
-    ctx.beginPath()
-    ctx.moveTo(x + radius, y)
-    ctx.arcTo(x + layout.cardW, y, x + layout.cardW, y + layout.cardH, radius)
-    ctx.arcTo(x + layout.cardW, y + layout.cardH, x, y + layout.cardH, radius)
-    ctx.arcTo(x, y + layout.cardH, x, y, radius)
-    ctx.arcTo(x, y, x + layout.cardW, y, radius)
-    ctx.closePath()
-
-    if (!card.faceUp) {
-      ctx.fillStyle = '#12495a'
-      ctx.fill()
-      ctx.strokeStyle = '#6dd4b8'
-      ctx.lineWidth = 2
-      ctx.stroke()
-
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.18)'
-      const patternCount = Math.max(4, Math.floor(layout.cardH / 15))
-      for (let row = 0; row < patternCount; row += 1) {
-        ctx.fillRect(x + 8, y + 10 + row * (layout.cardH / patternCount), layout.cardW - 16, 5)
-      }
+    if (card.faceUp) {
+      drawCardFace(ctx, card, rect)
     } else {
-      ctx.fillStyle = '#f3fff8'
-      ctx.fill()
-      ctx.strokeStyle = '#bdd8cd'
-      ctx.lineWidth = 1.5
-      ctx.stroke()
-
-      const color = cardColor(card) === 'red' ? '#cf3d48' : '#1f2d3a'
-      const label = `${rankLabels[card.rank - 1]}${suitLabels[card.suit]}`
-
-      ctx.fillStyle = color
-      const fontSize = Math.max(20, 40 * layout.scale)
-      const smallFontSize = fontSize * 0.85
-      // At this size a two-glyph label ("10♥") nearly spans the card, so the corners are padded by a
-      // fixed inset and the lower index is right-aligned by measurement rather than a fraction of the width.
-      const pad = layout.cardW * 0.06
-
-      ctx.font = `700 ${fontSize}px ${CARD_FONT}`
-      ctx.fillText(label, x + pad, y + layout.cardH * INDEX_BASELINE)
-      ctx.font = `700 ${smallFontSize}px ${CARD_FONT}`
-      ctx.fillText(label, x + layout.cardW - pad - ctx.measureText(label).width, y + layout.cardH * 0.94)
+      drawCardBack(ctx, rect)
     }
-
-    ctx.restore()
   }
 
   function startDragFromWaste(pointX: number, pointY: number): void {

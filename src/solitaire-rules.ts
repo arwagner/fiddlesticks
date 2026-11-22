@@ -1,7 +1,10 @@
 // Pure Klondike rules & geometry for Canvas Solitaire (feat-003) — no canvas/DOM, so unit-testable.
 // solitaire.ts owns rendering, pointer input, and state; it imports every rule/geometry helper here.
 
-export type Suit = 'hearts' | 'diamonds' | 'clubs' | 'spades'
+import { type Rect, type Suit, CARD_W, CARD_H, INDEX_BASELINE, cardColor, suits } from './cards'
+
+// The card basics live in cards.ts, shared with the other card games; re-exported for this game's callers.
+export { type Rect, type Suit, CARD_W, CARD_H, cardColor, suits }
 
 export type Card = {
   id: string
@@ -10,28 +13,14 @@ export type Card = {
   faceUp: boolean
 }
 
-export const suits: Suit[] = ['hearts', 'diamonds', 'clubs', 'spades']
-export const rankLabels = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']
-// Filled Unicode pips (U+2660..U+2666). Colour comes from cardColor, so the solid glyphs suit both.
-export const suitLabels: Record<Suit, string> = { hearts: '♥', diamonds: '♦', clubs: '♣', spades: '♠' }
-
 // Base (unscaled) layout constants.
-export const CARD_W = 86
-export const CARD_H = 120
 export const GAP_X = 18
 export const GAP_TOP = 24
 export const TABLEAU_Y = 172
 export const FACEDOWN_SHIFT = 12
-// Fraction of the card height at which the rank+pip index sits (its text baseline). solitaire.ts draws
-// against this and the fan below is derived from it.
-export const INDEX_BASELINE = 0.36
-// A face-up card in a tableau column must leave the card beneath it showing at least down to that
-// index, plus a little air — otherwise the card on top clips the rank you need to read.
+// A face-up card in a tableau column must leave the card beneath it showing at least down to its
+// rank+pip index (INDEX_BASELINE), plus a little air — otherwise the card on top clips the rank you need to read.
 export const FACEUP_SHIFT = Math.round(CARD_H * INDEX_BASELINE) + 3
-
-export function cardColor(card: Card): 'red' | 'black' {
-  return card.suit === 'hearts' || card.suit === 'diamonds' ? 'red' : 'black'
-}
 
 // feat-003/AC-3: foundations are NOT suit-locked — any Ace starts an empty foundation, after which it
 // builds up in that foundation's established suit.
@@ -183,8 +172,6 @@ export function tableauCardPositions(column: Card[], layout: Layout): number[] {
     return y
   })
 }
-
-export type Rect = { x: number; y: number; w: number; h: number }
 
 // feat-003/AC-14: hit-test in the SAME scaled coordinates the board draws in.
 export function pointInRect(x: number, y: number, shape: Rect): boolean {
