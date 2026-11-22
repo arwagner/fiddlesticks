@@ -1,6 +1,7 @@
 // Pure, size-parameterized Decant rules (no DOM) — decant.ts renders them, decant-solver.ts searches them.
 
 import { solve } from './decant-solver'
+import { shuffled } from './shuffle'
 
 // A bottle is a stack of color indices, bottom layer first. The last entry is the top layer, and the top
 // layer is the only one a pour can take.
@@ -157,19 +158,6 @@ export function undo(state: GameState): GameState {
     moves: state.moves - 1,
     won: isSolved(previous, state.capacity),
   }
-}
-
-function shuffled(values: number[], random: () => number): number[] {
-  const next = [...values]
-
-  for (let index = next.length - 1; index > 0; index -= 1) {
-    const swap = Math.floor(random() * (index + 1))
-    const current = next[index]
-    next[index] = next[swap]
-    next[swap] = current
-  }
-
-  return next
 }
 
 // Every layer of every color, shuffled and cut into full bottles, with the spare bottles left empty.
