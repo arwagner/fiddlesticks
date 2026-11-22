@@ -333,3 +333,11 @@ test('a tap on a foundation, an empty free cell or past the end of a cascade giv
   expect(tapped(state, cascade(0), 1)).toBeNull()
   expect(tapped(state, cascade(0), -1)).toBeNull()
 })
+
+test('a sequence too long for the capacity into the only empty cascade gives null, though its foot card fits', () => {
+  const full = [card(3, 'spades'), card(3, 'clubs'), card(4, 'spades'), card(4, 'clubs')]
+  const state = table([[card(13, 'clubs'), ...sequence(8, 2)], []], full)
+
+  expect(tapped(state, cascade(0), 1)).toBeNull()
+  expect(tapped(state, cascade(0), 2)).toEqual({ from: cascade(0), to: cascade(1), count: 1 })
+})
