@@ -107,7 +107,7 @@ test('a point on an empty cascade hits the cascade, with no card', () => {
   expect(hitTest(point, state, layout)).toEqual({ place: { kind: 'cascade', index: 0 }, cardIndex: null })
 })
 
-test('a point on the showing strip of a covered card hits that card, not the one above or below', () => {
+test('a point on the index of a covered card hits that card, not the one above or below', () => {
   const layout = freeCellLayout(PHONE)
   const state = withLongCascade()
   const rects = cascadeCardRects(1, state, layout)
