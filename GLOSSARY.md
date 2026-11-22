@@ -166,6 +166,10 @@ _Avoid_: Layout (that is the board's geometry), position
 Cards at the foot of a cascade that run down in rank and alternate colour.
 _Avoid_: Run (that is Nonogram's), stack
 
+**Move**:
+Taking one card, or a sequence, from one place and putting it on another, as one step undo can take back.
+_Avoid_: Play, turn
+
 **Capacity**:
 The most cards one move can carry: (empty free cells + 1) × 2^(empty cascades), counting one fewer empty
 cascade when the move goes into one.
