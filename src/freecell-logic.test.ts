@@ -17,6 +17,8 @@ import {
   type GameState,
   type Place,
   places,
+  cardsFrom,
+  samePlace,
 } from './freecell-logic'
 
 const key = (card: Card) => `${card.suit}-${card.rank}`
@@ -464,4 +466,30 @@ test('places lists every place of a kind, in order', () => {
   expect(places('cascade')).toHaveLength(8)
   expect(places('free-cell')).toEqual([0, 1, 2, 3].map((index) => ({ kind: 'free-cell', index })))
   expect(places('foundation').map((place) => place.index)).toEqual([0, 1, 2, 3])
+})
+
+test('cardsFrom picks up a cascade card with the cards below it, a free cell card alone, and no foundation card', () => {
+  const nine = { rank: 9, suit: 'spades' } as const
+  const eight = { rank: 8, suit: 'hearts' } as const
+  const ace = { rank: 1, suit: 'clubs' } as const
+  const state = {
+    cascades: [[{ rank: 13, suit: 'clubs' } as const, nine, eight], [], [], [], [], [], [], []],
+    freeCells: [null, eight, null, null],
+    foundations: [[ace], [], [], []],
+    past: [],
+  }
+
+  expect(cardsFrom(state, { kind: 'cascade', index: 0 }, 1)).toEqual([nine, eight])
+  expect(cardsFrom(state, { kind: 'cascade', index: 0 }, 3)).toEqual([])
+  expect(cardsFrom(state, { kind: 'cascade', index: 1 }, 0)).toEqual([])
+  expect(cardsFrom(state, { kind: 'free-cell', index: 1 }, 0)).toEqual([eight])
+  expect(cardsFrom(state, { kind: 'free-cell', index: 0 }, 0)).toEqual([])
+  expect(cardsFrom(state, { kind: 'foundation', index: 0 }, 0)).toEqual([])
+  expect(cardsFrom(state, { kind: 'cascade', index: 0 }, 0.5)).toEqual([])
+})
+
+test('samePlace tells one place from another of the same kind or index', () => {
+  expect(samePlace({ kind: 'cascade', index: 2 }, { kind: 'cascade', index: 2 })).toBe(true)
+  expect(samePlace({ kind: 'cascade', index: 2 }, { kind: 'cascade', index: 3 })).toBe(false)
+  expect(samePlace({ kind: 'free-cell', index: 2 }, { kind: 'foundation', index: 2 })).toBe(false)
 })

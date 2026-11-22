@@ -103,6 +103,28 @@ function cardAt(state: Arrangement, place: Place): Card | null {
   return pile?.at(-1) ?? null
 }
 
+// The cards a press on the card at `index` in `from` picks up: that card and, in a cascade, every card below
+// it. A free cell's card is at index 0. Empty when no card is there, or on a foundation, which neither a tap
+// nor a drag takes back down.
+export function cardsFrom(state: Arrangement, from: Place, index: number): Card[] {
+  if (!Number.isInteger(index) || index < 0) {
+    return []
+  }
+
+  if (from.kind === 'cascade') {
+    return state.cascades[from.index]?.slice(index) ?? []
+  }
+
+  const card = from.kind === 'free-cell' && index === 0 ? state.freeCells[from.index] : null
+
+  return card ? [card] : []
+}
+
+// Whether two places are the same one.
+export function samePlace(a: Place, b: Place): boolean {
+  return a.kind === b.kind && a.index === b.index
+}
+
 // The `count` cards a move would take from `from`, or null if the rules don't let them go together.
 function cardsToTake(state: GameState, from: Place, count: number): Card[] | null {
   if (from.kind === 'cascade') {
@@ -165,7 +187,7 @@ function arrangementOf(state: GameState): Arrangement {
 // Takes `count` cards from `from` and puts them on `to`, as one undoable step. Returns null if the rules
 // don't allow it; never changes `state`.
 export function move(state: GameState, from: Place, to: Place, count: number): GameState | null {
-  if (!Number.isInteger(count) || count < 1 || (from.kind === to.kind && from.index === to.index)) {
+  if (!Number.isInteger(count) || count < 1 || samePlace(from, to)) {
     return null
   }
 
@@ -287,20 +309,15 @@ export type Move = { from: Place; to: Place; count: number }
 // empty, the first empty cascade, then the first empty free cell (one card only). Returns the first move
 // `move` accepts, or null. A card on a foundation stays there: a tap never takes it back down.
 export function tapMove(state: GameState, from: Place, index: number): Move | null {
-  if (from.kind === 'foundation') {
-    return null
-  }
+  const count = cardsFrom(state, from, index).length
 
-  const size = from.kind === 'cascade' ? (state.cascades[from.index]?.length ?? 0) : 1
-  const count = size - index
-
-  if (!Number.isInteger(index) || index < 0 || count < 1 || !cardsToTake(state, from, count)) {
+  if (count === 0 || !cardsToTake(state, from, count)) {
     return null
   }
 
   const cascades = places('cascade')
   // Moving a whole cascade into an empty one, or a free cell's card into another free cell, changes nothing.
-  const takesWholeCascade = from.kind === 'cascade' && count === size
+  const takesWholeCascade = from.kind === 'cascade' && index === 0
   const candidates = [
     ...(count === 1 ? places('foundation') : []),
     ...cascades.filter((to) => !isEmptyCascade(state, to)),

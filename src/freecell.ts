@@ -7,6 +7,8 @@ import {
   undo,
   isSolved,
   cardsOnFoundations,
+  cardsFrom,
+  samePlace,
   CARD_COUNT,
   places,
   type Card,
@@ -109,13 +111,7 @@ export function setupFreeCell(container: HTMLElement, createGame: () => GameStat
   }
 
   function isLifted(place: Place, index: number): boolean {
-    return (
-      !!lifted &&
-      lifted.dragging &&
-      lifted.from.kind === place.kind &&
-      lifted.from.index === place.index &&
-      index >= lifted.index
-    )
+    return !!lifted && lifted.dragging && samePlace(lifted.from, place) && index >= lifted.index
   }
 
   function drawTopRow(): void {
@@ -197,33 +193,22 @@ export function setupFreeCell(container: HTMLElement, createGame: () => GameStat
     state = moveThenAutoPlay(state, from, to, count) ?? state
   }
 
-  // What a press on `point` picks up: a cascade's card and every card below it, or a free cell's card.
+  // What a press on `point` picks up, with the rects the cards are drawn in now.
   function lift(point: Point): Lifted | null {
     const hit = hitTest(point, state, layout)
+    const index = hit?.cardIndex ?? 0
+    const cards = hit ? cardsFrom(state, hit.place, index) : []
 
-    if (hit?.place.kind === 'cascade' && hit.cardIndex !== null) {
-      const index = hit.cardIndex
-
-      return {
-        from: hit.place,
-        index,
-        cards: state.cascades[hit.place.index].slice(index),
-        rects: cascadeCardRects(hit.place.index, state, layout).slice(index),
-        start: point,
-        at: point,
-        dragging: false,
-      }
+    if (!hit || cards.length === 0) {
+      return null
     }
 
-    const card = hit?.place.kind === 'free-cell' ? state.freeCells[hit.place.index] : null
+    const rects =
+      hit.place.kind === 'cascade'
+        ? cascadeCardRects(hit.place.index, state, layout).slice(index)
+        : [placeRect(hit.place, layout)]
 
-    if (hit && card) {
-      const rects = [placeRect(hit.place, layout)]
-
-      return { from: hit.place, index: 0, cards: [card], rects, start: point, at: point, dragging: false }
-    }
-
-    return null
+    return { from: hit.place, index, cards, rects, start: point, at: point, dragging: false }
   }
 
   canvas.addEventListener('pointerdown', (event) => {
