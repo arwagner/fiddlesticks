@@ -39,6 +39,7 @@ function stubLayoutAndCanvas(): void {
 
   HTMLCanvasElement.prototype.getContext = (() => context) as unknown as HTMLCanvasElement['getContext']
   HTMLCanvasElement.prototype.getBoundingClientRect = () => new DOMRect(0, 0, WIDTH, 600)
+  Object.defineProperty(HTMLCanvasElement.prototype, 'clientWidth', { value: WIDTH, configurable: true })
   globalThis.ResizeObserver = class {
     observe() {}
     unobserve() {}

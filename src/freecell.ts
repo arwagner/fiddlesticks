@@ -20,15 +20,15 @@ import {
   cascadeCardRects,
   boardHeight,
   hitTest,
+  boardPoint,
   type Layout,
+  type Point,
   type Rect,
 } from './freecell-layout'
 import { drawCardFace, drawEmptySlot } from './card-draw'
 
 // How far, in board pixels, a press may wander and still count as a tap rather than a drag.
 const TAP_SLOP = 6
-
-type Point = { x: number; y: number }
 
 // The cards a press has picked up: where they came from, the rects they were drawn in there, and where the
 // pointer went down, so they follow the pointer by the distance it has moved.
@@ -100,12 +100,16 @@ export function setupFreeCell(container: HTMLElement, createGame: () => GameStat
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0)
   }
 
-  // A point on the page as a point on the board. The canvas keeps the board's shape, so one factor serves both.
-  function boardPoint(event: MouseEvent): Point {
+  // Where an event's pointer is on the board, measured from inside the canvas's border.
+  function pointerAt(event: MouseEvent): Point {
     const bounds = canvas.getBoundingClientRect()
-    const factor = layout.width / bounds.width
+    const content = {
+      left: bounds.left + canvas.clientLeft,
+      top: bounds.top + canvas.clientTop,
+      width: canvas.clientWidth,
+    }
 
-    return { x: (event.clientX - bounds.left) * factor, y: (event.clientY - bounds.top) * factor }
+    return boardPoint(event.clientX, event.clientY, content, layout)
   }
 
   function isLifted(place: Place, index: number): boolean {
@@ -231,7 +235,7 @@ export function setupFreeCell(container: HTMLElement, createGame: () => GameStat
       return
     }
 
-    lifted = lift(boardPoint(event))
+    lifted = lift(pointerAt(event))
 
     if (lifted) {
       event.preventDefault()
@@ -243,7 +247,7 @@ export function setupFreeCell(container: HTMLElement, createGame: () => GameStat
       return
     }
 
-    lifted.at = boardPoint(event)
+    lifted.at = pointerAt(event)
     lifted.dragging ||= Math.hypot(lifted.at.x - lifted.start.x, lifted.at.y - lifted.start.y) > TAP_SLOP
     draw()
   })
@@ -257,7 +261,7 @@ export function setupFreeCell(container: HTMLElement, createGame: () => GameStat
     }
 
     if (ended.dragging) {
-      const hit = hitTest(boardPoint(event), state, layout)
+      const hit = hitTest(pointerAt(event), state, layout)
 
       if (hit) {
         play(ended.from, hit.place, ended.cards.length)

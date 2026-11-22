@@ -8,6 +8,7 @@ import {
   fanStep,
   hitTest,
   boardHeight,
+  boardPoint,
   type Rect,
 } from './freecell-layout'
 
@@ -163,4 +164,14 @@ test('with every cascade empty the board still has room for one card in each', (
   const state = { ...newGame(seeded(8)), cascades: Array.from({ length: 8 }, () => []) }
 
   expect(boardHeight(state, layout)).toBe(layout.cascadeY + layout.cardH + layout.marginY)
+})
+
+test('a point on the page maps onto the board inside the canvas, scaled to the board', () => {
+  const layout = freeCellLayout(800)
+
+  // The canvas draws 400 page px wide, from (101, 51) inside its border: half the board's width.
+  const content = { left: 101, top: 51, width: 400 }
+
+  expect(boardPoint(101, 51, content, layout)).toEqual({ x: 0, y: 0 })
+  expect(boardPoint(301, 151, content, layout)).toEqual({ x: 400, y: 200 })
 })

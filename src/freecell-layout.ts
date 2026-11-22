@@ -5,6 +5,9 @@ import { pointInRect, type Rect } from './solitaire-rules'
 
 export type { Rect } from './solitaire-rules'
 
+// A point on the board, in board pixels.
+export type Point = { x: number; y: number }
+
 // Sizes at scale 1, in canvas pixels.
 export const CARD_W = 86
 export const CARD_H = 120
@@ -110,11 +113,24 @@ export function boardHeight(state: GameState, layout: Layout): number {
   return lowest + layout.marginY
 }
 
+// A point on the page as a point on the board. `content` is where the canvas draws on the page, inside its
+// border: the board keeps its shape there, so one factor serves both axes.
+export function boardPoint(
+  clientX: number,
+  clientY: number,
+  content: { left: number; top: number; width: number },
+  layout: Layout,
+): Point {
+  const factor = layout.width / content.width
+
+  return { x: (clientX - content.left) * factor, y: (clientY - content.top) * factor }
+}
+
 // What a point is over: a place and, in a cascade with cards, the index of the card hit. cardIndex is null
 // for a free cell, a foundation or an empty cascade.
 export type Hit = { place: Place; cardIndex: number | null }
 
-export function hitTest(point: { x: number; y: number }, state: GameState, layout: Layout): Hit | null {
+export function hitTest(point: Point, state: GameState, layout: Layout): Hit | null {
   const topRow: Place[] = [
     ...Array.from({ length: FREE_CELL_COUNT }, (_, index): Place => ({ kind: 'free-cell', index })),
     ...Array.from({ length: FOUNDATION_COUNT }, (_, index): Place => ({ kind: 'foundation', index })),
