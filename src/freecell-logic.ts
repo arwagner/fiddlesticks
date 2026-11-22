@@ -149,7 +149,7 @@ function layoutOf(state: GameState): Layout {
 // Takes `count` cards from `from` and puts them on `to`, as one undoable step. Returns null if the rules
 // don't allow it; never changes `state`.
 export function move(state: GameState, from: Place, to: Place, count: number): GameState | null {
-  if (count < 1 || (from.kind === to.kind && from.index === to.index)) {
+  if (!Number.isInteger(count) || count < 1 || (from.kind === to.kind && from.index === to.index)) {
     return null
   }
 

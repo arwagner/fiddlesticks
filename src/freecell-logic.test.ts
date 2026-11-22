@@ -205,6 +205,13 @@ test('a move of no cards, more cards than the cascade holds, or onto its own pla
   expect(move(state, freeCell(0), cascade(1), 1)).toBeNull()
 })
 
+test('a move of part of a card or of NaN cards is refused', () => {
+  const state = table([[card(10, 'spades')], sequence(9, 2)])
+
+  expect(move(state, cascade(1), cascade(0), 1.5)).toBeNull()
+  expect(move(state, cascade(1), cascade(0), Number.NaN)).toBeNull()
+})
+
 test('move never changes the state it was given', () => {
   const state = table([[card(10, 'spades')], sequence(9, 2), [card(1, 'hearts')]])
   const before = structuredClone(state)
