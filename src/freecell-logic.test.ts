@@ -8,6 +8,9 @@ import {
   capacity,
   isSolved,
   undo,
+  autoPlay,
+  isSafe,
+  moveThenAutoPlay,
   type Card,
   type GameState,
   type Place,
@@ -246,4 +249,105 @@ test('undo does nothing with an empty past', () => {
   const state = newGame(seeded(7))
 
   expect(undo(state)).toBe(state)
+})
+
+test('an Ace at the foot of a cascade goes up to a foundation', () => {
+  const state = table([[card(9, 'spades'), card(1, 'diamonds')]])
+  const next = autoPlay(state)
+
+  expect(next.cascades[0]).toEqual([card(9, 'spades')])
+  expect(next.foundations).toContainEqual([card(1, 'diamonds')])
+})
+
+test('a Two goes up onto its Ace, whatever is on the other foundations', () => {
+  const state = table([[card(2, 'clubs')]], undefined, [[card(1, 'clubs')], [], [], []])
+
+  expect(isSafe(state, card(2, 'clubs'))).toBe(true)
+  expect(autoPlay(state).foundations[0]).toEqual([card(1, 'clubs'), card(2, 'clubs')])
+})
+
+test('a Three of hearts goes up only once both black Twos are up', () => {
+  const hearts = [card(1, 'hearts'), card(2, 'hearts')]
+  const oneBlackTwo = table([[card(3, 'hearts')]], undefined, [
+    hearts,
+    [card(1, 'clubs'), card(2, 'clubs')],
+    [card(1, 'spades')],
+    [],
+  ])
+  const bothBlackTwos = table([[card(3, 'hearts')]], undefined, [
+    hearts,
+    [card(1, 'clubs'), card(2, 'clubs')],
+    [card(1, 'spades'), card(2, 'spades')],
+    [],
+  ])
+
+  expect(isSafe(oneBlackTwo, card(3, 'hearts'))).toBe(false)
+  expect(autoPlay(oneBlackTwo).cascades[0]).toEqual([card(3, 'hearts')])
+  expect(isSafe(bothBlackTwos, card(3, 'hearts'))).toBe(true)
+  expect(autoPlay(bothBlackTwos).foundations[0]).toEqual([...hearts, card(3, 'hearts')])
+})
+
+test('a card that is not safe stays put, in a cascade or a free cell', () => {
+  // The Two of spades has no Ace to go onto; the Four of diamonds could go up, but the black Threes are not.
+  const diamonds = [card(1, 'diamonds'), card(2, 'diamonds'), card(3, 'diamonds')]
+  const state = table(
+    [[card(2, 'spades')]],
+    [card(4, 'diamonds'), null, null, null],
+    [diamonds, [card(1, 'clubs'), card(2, 'clubs')], [], []],
+  )
+
+  expect(isSafe(state, card(2, 'spades'))).toBe(false)
+  expect(isSafe(state, card(4, 'diamonds'))).toBe(false)
+  expect(autoPlay(state)).toEqual(state)
+})
+
+test('a safe card in a free cell goes up', () => {
+  const state = table([], [null, card(1, 'spades'), null, null])
+  const next = autoPlay(state)
+
+  expect(next.freeCells).toEqual([null, null, null, null])
+  expect(next.foundations).toContainEqual([card(1, 'spades')])
+})
+
+test('a chain where one card going up frees the next all goes up', () => {
+  // The Ace of clubs going up uncovers the Ace of hearts, and that uncovers the Two of clubs. The Two of
+  // hearts in the free cell can only follow once its Ace is up.
+  const state = table(
+    [[card(9, 'diamonds'), card(2, 'clubs'), card(1, 'hearts'), card(1, 'clubs')]],
+    [card(2, 'hearts'), null, null, null],
+  )
+  const next = autoPlay(state)
+
+  expect(next.cascades[0]).toEqual([card(9, 'diamonds')])
+  expect(next.freeCells).toEqual([null, null, null, null])
+  expect(next.foundations).toEqual([
+    [card(1, 'clubs'), card(2, 'clubs')],
+    [card(1, 'hearts'), card(2, 'hearts')],
+    [],
+    [],
+  ])
+})
+
+test('auto-play adds nothing to past, and keeps what is already there', () => {
+  const earlier = table([[card(1, 'hearts'), card(5, 'clubs')]])
+  const state = { ...table([[card(1, 'hearts')]]), past: [earlier] }
+
+  expect(autoPlay(state).past).toEqual([earlier])
+})
+
+test('a move sets off auto-play, and one undo brings back the state from before that move', () => {
+  // Moving the Nine of clubs onto the Ten of hearts uncovers an Ace, which goes up on its own.
+  const state = table([[card(10, 'hearts')], [card(1, 'spades'), card(9, 'clubs')]])
+  const next = moveThenAutoPlay(state, cascade(1), cascade(0), 1)!
+
+  expect(next.cascades[0]).toEqual([card(10, 'hearts'), card(9, 'clubs')])
+  expect(next.cascades[1]).toEqual([])
+  expect(next.foundations).toContainEqual([card(1, 'spades')])
+  expect(undo(next)).toEqual(state)
+})
+
+test('a move the rules refuse sets off no auto-play', () => {
+  const state = table([[card(1, 'spades'), card(9, 'clubs')], [card(9, 'hearts')]])
+
+  expect(moveThenAutoPlay(state, cascade(0), cascade(1), 1)).toBeNull()
 })

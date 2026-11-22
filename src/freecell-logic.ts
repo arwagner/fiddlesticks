@@ -76,6 +76,19 @@ function isSequence(cards: Card[]): boolean {
   return cards.every((card, index) => index === 0 || goesOnto(card, cards[index - 1]))
 }
 
+// The card that could be taken from `place` on its own: a cascade's foot, a free cell's card or a foundation's
+// top card. Null when the place is empty or doesn't exist.
+function cardAt(state: Arrangement, place: Place): Card | null {
+  const pile =
+    place.kind === 'cascade'
+      ? state.cascades[place.index]
+      : place.kind === 'foundation'
+        ? state.foundations[place.index]
+        : [state.freeCells[place.index]]
+
+  return pile?.at(-1) ?? null
+}
+
 // The `count` cards a move would take from `from`, or null if the rules don't let them go together.
 function cardsToTake(state: GameState, from: Place, count: number): Card[] | null {
   if (from.kind === 'cascade') {
@@ -94,9 +107,16 @@ function cardsToTake(state: GameState, from: Place, count: number): Card[] | nul
     return null
   }
 
-  const card = from.kind === 'free-cell' ? state.freeCells[from.index] : state.foundations[from.index]?.at(-1)
+  const card = cardAt(state, from)
 
   return card ? [card] : null
+}
+
+// Whether `card` may go onto `foundation`: an Ace onto an empty one, otherwise the next rank of the same suit.
+function goesOnFoundation(foundation: Card[], card: Card): boolean {
+  const top = foundation.at(-1)
+
+  return top ? card.suit === top.suit && card.rank === top.rank + 1 : card.rank === 1
 }
 
 // Whether `cards` may be put down on `to`, leaving capacity aside.
@@ -121,13 +141,7 @@ function canPutDown(state: GameState, cards: Card[], to: Place): boolean {
 
   const foundation = state.foundations[to.index]
 
-  if (!foundation || cards.length !== 1) {
-    return false
-  }
-
-  const top = foundation.at(-1)
-
-  return top ? first.suit === top.suit && first.rank === top.rank + 1 : first.rank === 1
+  return !!foundation && cards.length === 1 && goesOnFoundation(foundation, first)
 }
 
 function arrangementOf(state: GameState): Arrangement {
@@ -184,4 +198,67 @@ export function undo(state: GameState): GameState {
   }
 
   return { ...previous, past: state.past.slice(0, -1) }
+}
+
+// The foundation `card` can go onto now, or null if none will take it.
+function foundationFor(state: Arrangement, card: Card): Place | null {
+  const index = state.foundations.findIndex((foundation) => goesOnFoundation(foundation, card))
+
+  return index === -1 ? null : { kind: 'foundation', index }
+}
+
+// A safe card can go onto its foundation and no card left in play could still need it: both cards of the
+// other colour one rank lower are already on foundations. Aces and Twos are always safe.
+export function isSafe(state: Arrangement, card: Card): boolean {
+  if (!foundationFor(state, card)) {
+    return false
+  }
+
+  if (card.rank <= 2) {
+    return true
+  }
+
+  const onFoundations = state.foundations.flat()
+  const otherColourSuits = suits.filter((suit) => cardColor({ suit }) !== cardColor(card))
+
+  return otherColourSuits.every((suit) =>
+    onFoundations.some((placed) => placed.suit === suit && placed.rank === card.rank - 1),
+  )
+}
+
+// Every place auto-play may take a card from: the foot of each cascade, then each free cell.
+const autoPlayPlaces: Place[] = [
+  ...Array.from({ length: CASCADE_COUNT }, (_, index): Place => ({ kind: 'cascade', index })),
+  ...Array.from({ length: FREE_CELL_COUNT }, (_, index): Place => ({ kind: 'free-cell', index })),
+]
+
+// One safe card's move up to its foundation, or null if no card is safe.
+function nextSafeMove(state: Arrangement): { from: Place; to: Place } | null {
+  for (const from of autoPlayPlaces) {
+    const card = cardAt(state, from)
+    const to = card && isSafe(state, card) ? foundationFor(state, card) : null
+
+    if (to) {
+      return { from, to }
+    }
+  }
+
+  return null
+}
+
+// Moves safe cards up to the foundations until none is left. Auto-play adds nothing to `past`, so the undo
+// of the move before it takes the auto-play back too.
+export function autoPlay(state: GameState): GameState {
+  const step = nextSafeMove(state)
+  const next = step && move(state, step.from, step.to, 1)
+
+  return next ? autoPlay({ ...next, past: state.past }) : state
+}
+
+// The move the player makes: `move`, then auto-play. One undo takes back both. Returns null if the rules
+// don't allow the move.
+export function moveThenAutoPlay(state: GameState, from: Place, to: Place, count: number): GameState | null {
+  const next = move(state, from, to, count)
+
+  return next && autoPlay(next)
 }
