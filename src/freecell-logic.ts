@@ -78,12 +78,14 @@ export function capacity(state: GameState, to: Place): number {
   return (emptyFreeCells + 1) * 2 ** usableCascades
 }
 
+// Whether `card` may lie on `below` in a cascade: one rank lower and the other colour.
+function goesOnto(card: Card, below: Card): boolean {
+  return card.rank === below.rank - 1 && cardColor(card) !== cardColor(below)
+}
+
 // Each card one rank below the one before it and the other colour.
 function isSequence(cards: Card[]): boolean {
-  return cards.every(
-    (card, index) =>
-      index === 0 || (card.rank === cards[index - 1].rank - 1 && cardColor(card) !== cardColor(cards[index - 1])),
-  )
+  return cards.every((card, index) => index === 0 || goesOnto(card, cards[index - 1]))
 }
 
 // The `count` cards a move would take from `from`, or null if the rules don't let them go together.
@@ -114,13 +116,15 @@ function canPutDown(state: GameState, cards: Card[], to: Place): boolean {
   const [first] = cards
 
   if (to.kind === 'cascade') {
-    const foot = state.cascades[to.index]?.at(-1)
+    const cascade = state.cascades[to.index]
 
-    if (!state.cascades[to.index]) {
+    if (!cascade) {
       return false
     }
 
-    return !foot || (first.rank === foot.rank - 1 && cardColor(first) !== cardColor(foot))
+    const foot = cascade.at(-1)
+
+    return !foot || goesOnto(first, foot)
   }
 
   if (to.kind === 'free-cell') {
