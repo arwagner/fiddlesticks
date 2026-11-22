@@ -74,6 +74,19 @@ function isSequence(cards: Card[]): boolean {
   )
 }
 
+// The card that could be taken from `place` on its own: a cascade's foot, a free cell's card or a foundation's
+// top card. Null when the place is empty or doesn't exist.
+function cardAt(state: Arrangement, place: Place): Card | null {
+  const pile =
+    place.kind === 'cascade'
+      ? state.cascades[place.index]
+      : place.kind === 'foundation'
+        ? state.foundations[place.index]
+        : [state.freeCells[place.index]]
+
+  return pile?.at(-1) ?? null
+}
+
 // The `count` cards a move would take from `from`, or null if the rules don't let them go together.
 function cardsToTake(state: GameState, from: Place, count: number): Card[] | null {
   if (from.kind === 'cascade') {
@@ -92,7 +105,7 @@ function cardsToTake(state: GameState, from: Place, count: number): Card[] | nul
     return null
   }
 
-  const card = from.kind === 'free-cell' ? state.freeCells[from.index] : state.foundations[from.index]?.at(-1)
+  const card = cardAt(state, from)
 
   return card ? [card] : null
 }
@@ -214,10 +227,6 @@ const autoPlaySources: Place[] = [
   ...Array.from({ length: CASCADE_COUNT }, (_, index): Place => ({ kind: 'cascade', index })),
   ...Array.from({ length: FREE_CELL_COUNT }, (_, index): Place => ({ kind: 'free-cell', index })),
 ]
-
-function cardAt(state: Arrangement, place: Place): Card | null {
-  return (place.kind === 'cascade' ? state.cascades[place.index]?.at(-1) : state.freeCells[place.index]) ?? null
-}
 
 // One safe card's move up to its foundation, or null if no card is safe.
 function nextSafeMove(state: Arrangement): { from: Place; to: Place } | null {
