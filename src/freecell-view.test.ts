@@ -233,7 +233,7 @@ test('Undo is disabled at the start and takes back the last move', () => {
   press(board.card(state, 0, 1))
   expect(board.status()).toBe('1 of 52 cards on the foundations')
 
-  board.undoButton().click()
+  press(board.undoButton)
   expect(whereIs('A♦')).toEqual(cascade(0))
   expect(board.status()).toBe('0 of 52 cards on the foundations')
   expect(board.undoButton().disabled).toBe(true)
@@ -268,7 +268,7 @@ test('New game deals again', () => {
   press(board.card(deals[0], 0, 1))
   expect(board.undoButton().disabled).toBe(false)
 
-  board.newButton().click()
+  press(board.newButton)
 
   expect(dealt).toBe(2)
   // Every card of the second deal is drawn in the cascade it was dealt to.
